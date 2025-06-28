@@ -3,7 +3,9 @@
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import AdminLayout from "@/components/layout/AdminLayout";
+import { adminAPI } from "@/lib/admin-api";
 import {
   Plus,
   Edit,
@@ -28,8 +30,20 @@ interface Plan {
 export default function PlansPage() {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
+
+  // Fetch plans data from API
+  const {
+    data: plansResponse,
+    isLoading: loading,
+    error,
+  } = useQuery({
+    queryKey: ["admin-plans"],
+    queryFn: () => adminAPI.getPlans(),
+    enabled: isLoaded && isSignedIn,
+  });
+
+  // Mock local state for demo purposes (since we don't have full plan management API)
   const [plans, setPlans] = useState<Plan[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -105,11 +119,25 @@ export default function PlansPage() {
       },
     ];
 
-    setTimeout(() => {
+    // Use API data if available, otherwise fall back to mock data
+    if (plansResponse?.success && plansResponse.data?.plans) {
+      // Convert API plans to display format (since API structure might be different)
+      const apiPlans = plansResponse.data.plans.map((apiPlan: any) => ({
+        id: apiPlan.id,
+        name: apiPlan.name,
+        price: apiPlan.price || 0,
+        credits: 0, // API doesn't have credits field
+        features: apiPlan.features || [],
+        isActive: apiPlan.is_active,
+        subscriberCount: 0, // We'd need additional API for this
+        revenue: 0, // We'd need additional API for this
+      }));
+      setPlans(apiPlans);
+    } else {
+      // Fallback to mock data
       setPlans(mockPlans);
-      setLoading(false);
-    }, 1000);
-  }, []);
+    }
+  }, [plansResponse]);
 
   const togglePlanStatus = (planId: string) => {
     setPlans(

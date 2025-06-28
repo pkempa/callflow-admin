@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CallFlowHQ Admin Debug</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .section {
+            background: #f5f5f5;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+        }
+        .error { border-left-color: #ef4444; background: #fef2f2; }
+        .success { border-left-color: #10b981; background: #f0fdf4; }
+        .warning { border-left-color: #f59e0b; background: #fffbeb; }
+        code {
+            background: #e5e7eb;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 0.8em;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .status {
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        .status.yes { background: #dcfce7; color: #166534; }
+        .status.no { background: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body>
+    <h1>CallFlowHQ Admin Debug Information</h1>
+    <p>This page shows Clerk authentication status and environment configuration without any authentication checks.</p>
+    
+    <button onclick="refreshDebugInfo()">Refresh Info</button>
+    
+    <div id="debug-info">
+        <p>Loading debug information...</p>
+    </div>
+
+    <script>
+        function collectDebugInfo() {
+            const info = {
+                timestamp: new Date().toISOString(),
+                windowClerk: {
+                    exists: !!window.Clerk,
+                    loaded: window.Clerk ? window.Clerk.loaded : false,
+                    user: null,
+                    session: null
+                },
+                clerkScripts: [],
+                currentUrl: window.location.href,
+                userAgent: navigator.userAgent
+            };
+
+            // Check for Clerk scripts
+            const scripts = document.querySelectorAll('script');
+            scripts.forEach(script => {
+                if (script.src && script.src.includes('clerk')) {
+                    info.clerkScripts.push(script.src);
+                }
+            });
+
+            // Get Clerk user info if available
+            if (window.Clerk && window.Clerk.user) {
+                info.windowClerk.user = {
+                    id: window.Clerk.user.id,
+                    primaryEmailAddress: window.Clerk.user.primaryEmailAddress?.emailAddress,
+                    firstName: window.Clerk.user.firstName,
+                    lastName: window.Clerk.user.lastName
+                };
+            }
+
+            // Get Clerk session info if available
+            if (window.Clerk && window.Clerk.session) {
+                info.windowClerk.session = {
+                    id: window.Clerk.session.id,
+                    userId: window.Clerk.session.userId
+                };
+            }
+
+            return info;
+        }
+
+        function renderDebugInfo(info) {
+            const container = document.getElementById('debug-info');
+            
+            const html = `
+                <div class="grid">
+                    <div class="section">
+                        <h2>Summary</h2>
+                        <p><strong>Clerk Object Exists:</strong> <span class="status ${info.windowClerk.exists ? 'yes' : 'no'}">${info.windowClerk.exists ? '✅ Yes' : '❌ No'}</span></p>
+                        <p><strong>Clerk Loaded:</strong> <span class="status ${info.windowClerk.loaded ? 'yes' : 'no'}">${info.windowClerk.loaded ? '✅ Yes' : '❌ No'}</span></p>
+                        <p><strong>User Signed In:</strong> <span class="status ${info.windowClerk.user ? 'yes' : 'no'}">${info.windowClerk.user ? '✅ Yes' : '❌ No'}</span></p>
+                        <p><strong>User ID:</strong> <code>${info.windowClerk.user?.id || 'null'}</code></p>
+                        <p><strong>Session ID:</strong> <code>${info.windowClerk.session?.id || 'null'}</code></p>
+                    </div>
+
+                    <div class="section">
+                        <h2>Page Information</h2>
+                        <p><strong>Current URL:</strong> <code>${info.currentUrl}</code></p>
+                        <p><strong>Clerk Scripts Found:</strong> ${info.clerkScripts.length}</p>
+                        ${info.clerkScripts.map(script => `<p style="margin-left: 20px;"><code>${script}</code></p>`).join('')}
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>window.Clerk Object</h2>
+                    <pre>${JSON.stringify(info.windowClerk, null, 2)}</pre>
+                </div>
+
+                <div class="section">
+                    <h2>Console Commands to Try</h2>
+                    <p><strong>Check Clerk:</strong> <code>console.log('Clerk:', window.Clerk)</code></p>
+                    <p><strong>Check User:</strong> <code>console.log('User ID:', window.Clerk?.user?.id)</code></p>
+                    <p><strong>Check Session:</strong> <code>console.log('Session:', window.Clerk?.session)</code></p>
+                </div>
+
+                <div class="section ${info.windowClerk.exists ? (info.windowClerk.user ? 'success' : 'warning') : 'error'}">
+                    <h2>Recommendations</h2>
+                    ${!info.windowClerk.exists ? 
+                        '<p>❌ <strong>window.Clerk not found</strong> - Clerk is not loaded. Check if environment variables are configured and ClerkProvider is working.</p>' : 
+                        !info.windowClerk.loaded ? 
+                            '<p>⚠️ <strong>Clerk exists but not loaded</strong> - Waiting for Clerk to initialize.</p>' : 
+                            !info.windowClerk.user ? 
+                                '<p>ℹ️ <strong>User not signed in</strong> - Sign in to get your user ID for platform admin setup.</p>' : 
+                                `<p>✅ <strong>Ready!</strong> User ID: <code>${info.windowClerk.user.id}</code> - You can now run the platform admin setup script!</p>`
+                    }
+                </div>
+
+                <div style="margin-top: 20px; padding: 10px; background: #f9f9f9; border-radius: 4px; font-size: 0.9em; color: #666;">
+                    Last updated: ${info.timestamp}
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        function refreshDebugInfo() {
+            const info = collectDebugInfo();
+            renderDebugInfo(info);
+            console.log('Debug Info:', info);
+        }
+
+        // Initial load
+        refreshDebugInfo();
+
+        // Auto-refresh every 2 seconds for 30 seconds to catch Clerk loading
+        let autoRefreshCount = 0;
+        const autoRefreshInterval = setInterval(() => {
+            autoRefreshCount++;
+            refreshDebugInfo();
+            
+            if (autoRefreshCount >= 15 || (window.Clerk && window.Clerk.loaded)) {
+                clearInterval(autoRefreshInterval);
+            }
+        }, 2000);
+    </script>
+</body>
+</html> 

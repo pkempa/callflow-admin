@@ -14,19 +14,67 @@ import {
   User,
   LogOut,
   Shield,
+  FileText,
+  Building,
+  Bug,
+  Sliders,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { adminAPI } from "@/lib/admin-api";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-const navigationItems = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Users", href: "/users", icon: Users },
-  { name: "Plans", href: "/plans", icon: CreditCard },
-  { name: "Analytics", href: "/analytics", icon: BarChart3 },
-  { name: "Settings", href: "/settings", icon: Settings },
+interface BackendUserProfile {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  status: string;
+  phone_number?: string;
+  job_title?: string;
+  department?: string;
+  avatar_gradient?: string;
+  last_active?: string;
+  created_at: string;
+  organization?: {
+    id: string;
+    name: string;
+    plan: string;
+    team_size: number;
+    industry: string;
+  };
+}
+
+const navigationSections = [
+  {
+    name: "Overview",
+    items: [
+      { name: "Dashboard", href: "/", icon: LayoutDashboard },
+      { name: "Analytics", href: "/analytics", icon: BarChart3 },
+    ],
+  },
+  {
+    name: "User Management",
+    items: [
+      { name: "Organizations", href: "/users", icon: Building },
+      { name: "Platform Users", href: "/platform-users", icon: Shield },
+    ],
+  },
+  {
+    name: "Business",
+    items: [{ name: "Plans", href: "/plans", icon: CreditCard }],
+  },
+  {
+    name: "System & Debug",
+    items: [
+      { name: "System Logs", href: "/logs", icon: FileText },
+      { name: "Debug Tools", href: "/debug", icon: Bug },
+      { name: "Settings", href: "/settings", icon: Sliders },
+    ],
+  },
 ];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
@@ -37,7 +85,34 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const { signOut } = useClerk();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [backendUser, setBackendUser] = useState<BackendUserProfile | null>(
+    null
+  );
+  const [loadingProfile, setLoadingProfile] = useState(true);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Fetch user profile from backend
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!isSignedIn) return;
+
+      try {
+        setLoadingProfile(true);
+        const response = await adminAPI.getUserProfile();
+        if (response.success && response.data) {
+          setBackendUser(response.data);
+        } else {
+          console.error("Failed to load user profile:", response.error);
+        }
+      } catch (error) {
+        console.error("Error loading user profile:", error);
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, [isSignedIn]);
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -69,11 +144,24 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     return null;
   }
 
-  const userInitials = user
-    ? `${user.firstName?.charAt(0) || ""}${
-        user.lastName?.charAt(0) || ""
-      }`.toUpperCase()
-    : "AD";
+  // Use backend user data if available, fallback to Clerk data
+  const displayUser = backendUser || {
+    first_name: user?.firstName || "",
+    last_name: user?.lastName || "",
+    email: user?.emailAddresses[0]?.emailAddress || "",
+  };
+
+  const userInitials =
+    `${displayUser.first_name?.charAt(0) || ""}${
+      displayUser.last_name?.charAt(0) || ""
+    }`.toUpperCase() || "AD";
+
+  const displayName =
+    displayUser.first_name && displayUser.last_name
+      ? `${displayUser.first_name} ${displayUser.last_name}`
+      : displayUser.first_name || user?.firstName || "Admin";
+
+  // Note: Removed getPageTitle function as it was redundant with page titles
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -105,28 +193,41 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         <nav className="mt-6">
           <div className="px-3">
-            {navigationItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
+            {navigationSections.map((section, sectionIndex) => (
+              <div
+                key={section.name}
+                className={sectionIndex > 0 ? "mt-6" : ""}
+              >
+                {/* Section Header */}
+                <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  {section.name}
+                </h3>
 
-              return (
-                <button
-                  key={item.name}
-                  onClick={() => {
-                    router.push(item.href);
-                    setSidebarOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md mb-1 flex items-center transition-colors ${
-                    isActive
-                      ? "text-blue-700 bg-blue-100"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                  }`}
-                >
-                  <Icon className="mr-3 h-5 w-5" />
-                  {item.name}
-                </button>
-              );
-            })}
+                {/* Section Items */}
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
+
+                  return (
+                    <button
+                      key={item.name}
+                      onClick={() => {
+                        router.push(item.href);
+                        setSidebarOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md mb-1 flex items-center transition-colors ${
+                        isActive
+                          ? "text-blue-700 bg-blue-100"
+                          : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                      }`}
+                    >
+                      <Icon className="mr-3 h-5 w-5" />
+                      {item.name}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         </nav>
       </div>
@@ -143,9 +244,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <h2 className="ml-2 lg:ml-0 text-lg font-semibold text-gray-900">
-                Admin Panel
-              </h2>
+              {/* Page title is shown in the page content, no need to duplicate here */}
             </div>
 
             {/* Custom User Menu */}
@@ -159,9 +258,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </div>
                 <div className="hidden sm:block text-left">
                   <div className="text-sm font-medium text-gray-900">
-                    {user?.firstName} {user?.lastName}
+                    {displayName}
                   </div>
-                  <div className="text-xs text-gray-500">Administrator</div>
+                  <div className="text-xs text-gray-500">
+                    {backendUser?.role
+                      ? backendUser.role === "admin"
+                        ? "Administrator"
+                        : backendUser.role === "platform_admin"
+                        ? "Platform Administrator"
+                        : backendUser.role === "platform_member"
+                        ? "Platform Member"
+                        : "Member"
+                      : "Administrator"}
+                  </div>
                 </div>
                 <ChevronDown
                   className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
@@ -180,14 +289,22 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-900">
-                          {user?.firstName} {user?.lastName}
+                          {displayName}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {user?.emailAddresses[0]?.emailAddress}
+                          {displayUser.email}
                         </div>
                         <div className="flex items-center text-xs text-green-600 mt-1">
                           <Shield className="h-3 w-3 mr-1" />
-                          Administrator
+                          {backendUser?.role
+                            ? backendUser.role === "admin"
+                              ? "Administrator"
+                              : backendUser.role === "platform_admin"
+                              ? "Platform Administrator"
+                              : backendUser.role === "platform_member"
+                              ? "Platform Member"
+                              : "Member"
+                            : "Administrator"}
                         </div>
                       </div>
                     </div>
@@ -197,13 +314,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     <button
                       onClick={() => {
                         setUserMenuOpen(false);
-                        // Add profile functionality here if needed
+                        router.push("/profile");
                       }}
                       className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                     >
                       <User className="h-4 w-4 mr-3 text-gray-400" />
-                      View Profile
+                      My Profile
                     </button>
+
+                    <div className="border-t border-gray-100 my-2"></div>
 
                     <button
                       onClick={() => {

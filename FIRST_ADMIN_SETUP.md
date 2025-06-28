@@ -1,184 +1,106 @@
-# First Admin User Setup Guide
+# 🔐 First Platform Admin Setup
 
-This guide explains how to create the very first administrator user for your CallFlowHQ Admin Panel.
+## Quick Setup (3 Steps)
 
-## 🔒 Security Note
+### 1. Get Your Clerk User ID
 
-The admin panel uses **invitation-only registration** for security. Self-registration is disabled to prevent unauthorized access.
+1. Go to [Clerk Dashboard](https://dashboard.clerk.com)
+2. Navigate to **Users**
+3. Find your user and copy the **User ID** (starts with `user_`)
 
-## Prerequisites: Environment Setup
+### 2. Run the Setup Script
 
-**You need to create a `.env.local` file first:**
+```bash
+cd callflow-admin
+node create-platform-admin.js
+```
 
-1. **Create the file** in the `callflow-admin` directory:
+**You'll be prompted for:**
 
-   ```bash
-   cd callflow-admin
-   touch .env.local
-   ```
+- ✅ Clerk User ID
+- ✅ Email address
+- ✅ First name
+- ✅ Last name
+- ⚪ Phone number (optional)
+- ⚪ Job title (optional)
+- ⚪ Department (optional)
 
-2. **Add the following content** to `.env.local`:
+### 3. Execute the Generated SQL
 
-   ```bash
-   # Clerk Authentication - REPLACE WITH YOUR ACTUAL KEYS
-   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_your_publishable_key_here
-   CLERK_SECRET_KEY=sk_test_your_secret_key_here
+The script will output SQL statements like:
 
-   # Clerk URLs (for admin app on port 3001)
-   NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-   NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-   NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/
-   NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/
+```sql
+-- 1. Create platform admin organization (if not exists)
+INSERT INTO organizations (
+  id, name, owner_id, plan, team_size, industry, created_at, updated_at
+) VALUES (
+  'platform-admin-org',
+  'Platform Administration',
+  'user_abc123',
+  'ENTERPRISE',
+  '1-10',
+  'Technology',
+  '2024-01-01T00:00:00.000Z',
+  '2024-01-01T00:00:00.000Z'
+) ON CONFLICT (id) DO NOTHING;
 
-   # First Admin Setup - GENERATE A SECURE KEY
-   ADMIN_SETUP_KEY=generate_a_secure_key_here
-   ```
+-- 2. Create platform admin user
+INSERT INTO users (
+  id, email, first_name, last_name, organization_id, role, status,
+  clerk_user_id, phone_number, job_title, department, created_at, updated_at
+) VALUES (
+  'user_generated123',
+  'admin@yourcompany.com',
+  'John',
+  'Doe',
+  'platform-admin-org',
+  'ADMIN',
+  'ACTIVE',
+  'user_abc123',
+  NULL,
+  'Platform Administrator',
+  'System Administration',
+  '2024-01-01T00:00:00.000Z',
+  '2024-01-01T00:00:00.000Z'
+);
+```
 
-3. **Get your Clerk keys**:
+Copy and execute these statements in your database.
 
-   - Go to https://dashboard.clerk.com
-   - Select your project (or create a new one for the admin app)
-   - Go to "API Keys" in the sidebar
-   - Copy the "Publishable key" and "Secret key"
-   - Replace the placeholder values in `.env.local`
+## ✅ Done!
 
-4. **Generate a setup key** (for Option 2 below):
-   ```bash
-   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-   ```
-   Replace `generate_a_secure_key_here` with the generated key.
+Now you can:
 
-## Option 1: Using Clerk Dashboard (Recommended)
+1. **Login** to the admin panel with your Clerk credentials
+2. **Create additional platform users** via the admin UI (`/platform-users`)
+3. **Manage the system** with full platform admin access
 
-This is the easiest and most secure method:
+## 🎯 What You Get
 
-### Steps:
+As a **Platform Admin**, you can:
 
-1. **Go to Clerk Dashboard**: https://dashboard.clerk.com
-2. **Sign in** to your Clerk account
-3. **Select your CallFlowHQ Admin application**
-4. **Navigate to "Users"** in the left sidebar
-5. **Click "Create user"**
-6. **Fill in the admin details**:
-   - Email address
-   - Password (or leave empty to send invitation)
-   - First name
-   - Last name
-7. **Click "Create"**
+- ✅ Create/manage all platform users (admins & members)
+- ✅ Create/manage organization users
+- ✅ Manage SSM Parameter Store
+- ✅ View system-wide analytics
+- ✅ Access all admin features
 
-The user will be automatically verified and can immediately sign in to the admin panel.
+## 🔄 Creating More Platform Users
 
-## Option 2: Using the Setup API Endpoint
+After the first admin is set up, create additional platform users through the admin UI:
 
-If you prefer a programmatic approach:
+1. Login to admin panel
+2. Go to **Platform Users** page
+3. Click **"Create Platform User"**
+4. Choose role:
+   - **Platform Admin** - Full system access
+   - **Platform Member** - Read-only platform access
 
-### Prerequisites:
+## 🏗 Default Organization
 
-- Admin application running locally
-- Access to environment variables
+- **Platform Organization ID:** `platform-admin-org`
+- **Organization Name:** "Platform Administration"
+- **Purpose:** Houses all platform admins and members
+- **Plan:** Enterprise (unlimited features)
 
-### Steps:
-
-1. **Run the setup helper script**:
-
-   ```bash
-   cd callflow-admin
-   node setup-first-admin.js
-   ```
-
-2. **Follow the prompts** to enter:
-
-   - First Name
-   - Last Name
-   - Email Address
-   - Password (hidden input)
-   - Confirm Password
-
-3. **The script will generate a setup key** - add it to your `.env.local` file:
-
-   ```bash
-   ADMIN_SETUP_KEY=your_generated_key_here
-   ```
-
-4. **Start the admin application**:
-
-   ```bash
-   npm run dev
-   ```
-
-5. **Make the API call** (the script will show you the exact curl command):
-   ```bash
-   curl -X POST http://localhost:3001/api/setup-admin \
-     -H "Content-Type: application/json" \
-     -d '{
-       "email": "admin@example.com",
-       "password": "your-secure-password",
-       "firstName": "Admin",
-       "lastName": "User",
-       "setupKey": "your_generated_key_here"
-     }'
-   ```
-
-### Security Features:
-
-- ✅ Setup key prevents unauthorized user creation
-- ✅ API endpoint only works when no users exist
-- ✅ One-time use only (disabled after first user is created)
-- ✅ Validates password strength requirements
-
-## Option 3: Manual Environment Setup
-
-If you need to create the first user without the helper script:
-
-1. **Generate a secure setup key**:
-
-   ```bash
-   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-   ```
-
-2. **Add to `.env.local`**:
-
-   ```bash
-   ADMIN_SETUP_KEY=your_generated_key
-   ```
-
-3. **Use the API endpoint** with your preferred HTTP client (curl, Postman, etc.)
-
-## Verification
-
-After creating the first admin user:
-
-1. **Visit the admin panel**: http://localhost:3001
-2. **Sign in** with the created credentials
-3. **Verify access** to all admin features
-4. **Check the user dropdown** shows admin role
-
-## Next Steps: Inviting Additional Admins
-
-Once you have the first admin user, you can invite additional administrators:
-
-### Current Options:
-
-1. **Clerk Dashboard**: Create additional users manually
-2. **Future Feature**: Admin panel will include user invitation system
-
-### Planned Features:
-
-- 📧 Email invitation system
-- 👥 Role-based permissions
-- 🔐 Temporary invitation links
-- ⏰ Invitation expiration
-
-## Troubleshooting
-
-### Common Issues:
-
-**"Missing environment variables" error**
-
-- Ensure `.env.local` file exists in `callflow-admin` directory
-- Verify all required variables are set
-- Check that Clerk keys are valid
-
-**"Invalid setup key" error**
-
-- Ensure `ADMIN_SETUP_KEY` is set in `.env.local`
+This is separate from regular customer organizations.
