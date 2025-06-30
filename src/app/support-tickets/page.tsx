@@ -643,18 +643,46 @@ export default function SupportTicketsPage() {
                       <Label className="text-sm font-medium text-gray-500">
                         Customer
                       </Label>
-                      <p className="text-sm">
-                        User ID: {selectedTicket.user_id}
-                      </p>
-                      <p className="text-sm">
-                        {selectedTicket.organization_account_number
-                          ? `Account: ${selectedTicket.organization_account_number}`
-                          : `Org ID: ${selectedTicket.organization_id}`}
-                      </p>
-                      {selectedTicket.organization_name && (
-                        <p className="text-sm text-gray-500">
-                          {selectedTicket.organization_name}
-                        </p>
+                      {selectedTicket.metadata?.is_anonymous ? (
+                        <div>
+                          <p className="text-sm font-medium text-orange-600">
+                            Anonymous Contact
+                          </p>
+                          <p className="text-sm">
+                            Name:{" "}
+                            {selectedTicket.metadata.contact_name as string}
+                          </p>
+                          <p className="text-sm">
+                            Email:{" "}
+                            {selectedTicket.metadata.contact_email as string}
+                          </p>
+                          {selectedTicket.metadata.contact_company && (
+                            <p className="text-sm">
+                              Company:{" "}
+                              {String(selectedTicket.metadata.contact_company)}
+                            </p>
+                          )}
+                          <p className="text-sm text-gray-500">
+                            Inquiry Type:{" "}
+                            {selectedTicket.metadata.inquiry_type as string}
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-sm">
+                            User ID: {selectedTicket.user_id}
+                          </p>
+                          <p className="text-sm">
+                            {selectedTicket.organization_account_number
+                              ? `Account: ${selectedTicket.organization_account_number}`
+                              : `Org ID: ${selectedTicket.organization_id}`}
+                          </p>
+                          {selectedTicket.organization_name && (
+                            <p className="text-sm text-gray-500">
+                              {selectedTicket.organization_name}
+                            </p>
+                          )}
+                        </>
                       )}
                     </div>
                     <div>
@@ -746,7 +774,6 @@ export default function SupportTicketsPage() {
                         onValueChange={(value) =>
                           handleStatusUpdate(selectedTicket.id, value)
                         }
-                        disabled={isSubmitting}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -773,7 +800,6 @@ export default function SupportTicketsPage() {
                         onValueChange={(value) =>
                           handlePriorityUpdate(selectedTicket.id, value)
                         }
-                        disabled={isSubmitting}
                       >
                         <SelectTrigger>
                           <SelectValue />

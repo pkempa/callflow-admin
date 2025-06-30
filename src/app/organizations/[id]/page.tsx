@@ -53,36 +53,48 @@ export default function OrganizationDetailPage() {
   // API call timing control
   const lastApiCallRef = useRef<number>(0);
 
-  // Protected state updates to prevent data clearing unexpectedly
+  // Use refs to get current state values without causing re-renders
+  const organizationRef = useRef(organization);
+  const usersRef = useRef(users);
+  const activitiesRef = useRef(activities);
+
+  // Update refs when state changes
+  useEffect(() => {
+    organizationRef.current = organization;
+  }, [organization]);
+
+  useEffect(() => {
+    usersRef.current = users;
+  }, [users]);
+
+  useEffect(() => {
+    activitiesRef.current = activities;
+  }, [activities]);
+
+  // Protected state updates to prevent data clearing unexpectedly (now stable)
   const setOrganizationProtected = useCallback(
     (newOrg: Organization | null) => {
-      if (!newOrg && organization) {
+      if (!newOrg && organizationRef.current) {
         return; // Don't clear existing data
       }
       setOrganization(newOrg);
     },
-    [organization]
+    []
   );
 
-  const setUsersProtected = useCallback(
-    (newUsers: User[]) => {
-      if (newUsers.length === 0 && users.length > 0) {
-        return; // Don't clear existing data
-      }
-      setUsers(newUsers);
-    },
-    [users]
-  );
+  const setUsersProtected = useCallback((newUsers: User[]) => {
+    if (newUsers.length === 0 && usersRef.current.length > 0) {
+      return; // Don't clear existing data
+    }
+    setUsers(newUsers);
+  }, []);
 
-  const setActivitiesProtected = useCallback(
-    (newActivities: ActivityLog[]) => {
-      if (newActivities.length === 0 && activities.length > 0) {
-        return; // Don't clear existing data
-      }
-      setActivities(newActivities);
-    },
-    [activities]
-  );
+  const setActivitiesProtected = useCallback((newActivities: ActivityLog[]) => {
+    if (newActivities.length === 0 && activitiesRef.current.length > 0) {
+      return; // Don't clear existing data
+    }
+    setActivities(newActivities);
+  }, []);
 
   // On-demand loading states for activities and users
   const [activitiesLoaded, setActivitiesLoaded] = useState(false);
@@ -112,7 +124,7 @@ export default function OrganizationDetailPage() {
       .finally(() => {
         setActivitiesLoading(false);
       });
-  }, [organization, activitiesLoading, activities, setActivitiesProtected]);
+  }, [organization, activitiesLoading]);
 
   const loadUsersOnDemand = useCallback(async () => {
     if (!organization || usersLoading) return;
@@ -157,7 +169,7 @@ export default function OrganizationDetailPage() {
     }
 
     setUsersLoading(false);
-  }, [organization, usersLoading, users, setUsersProtected]);
+  }, [organization, usersLoading]);
 
   // Handle tab changes and trigger on-demand loading
   const handleTabChange = (newTab: string) => {
@@ -178,13 +190,7 @@ export default function OrganizationDetailPage() {
         loadUsersOnDemand();
       }
     }
-  }, [
-    activeTab,
-    organization,
-    loading,
-    loadActivitiesOnDemand,
-    loadUsersOnDemand,
-  ]);
+  }, [activeTab, organization, loading]);
 
   // Reset and refetch function for manual refresh
   const resetAndFetch = async () => {
