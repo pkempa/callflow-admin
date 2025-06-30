@@ -1,7 +1,7 @@
 // API configuration - using same base URL as main frontend
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
-  "https://ca6ofgmah9.execute-api.us-east-1.amazonaws.com/prod";
+  "https://gln3f6l37g.execute-api.us-east-1.amazonaws.com/prod";
 
 // API response types (matching main frontend)
 export interface ApiResponse<T = unknown> {
@@ -15,6 +15,7 @@ export interface Organization {
   id: string;
   name: string;
   owner_id: string;
+  account_number?: string;
   plan: string;
   team_size: string;
   industry: string;
@@ -24,8 +25,61 @@ export interface Organization {
   stripe_subscription_id?: string;
   wallet_balance: number;
   is_active?: boolean;
+  admin_notes?: string;
+  has_notes?: boolean;
+  support_priority?: string;
   created_at: string;
   updated_at: string;
+}
+
+// Dropdown option type
+export interface DropdownOption {
+  id?: string;
+  value: string;
+  label: string;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Support Ticket Interfaces
+export interface SupportTicket {
+  id: string;
+  ticket_number: string;
+  subject: string;
+  description: string;
+  category: string;
+  priority: string;
+  status: string;
+  user_id: string;
+  organization_id: string;
+  organization_account_number?: string;
+  organization_name?: string;
+  assigned_to?: string;
+  admin_notes?: string;
+  responses: SupportTicketResponse[];
+  attachments?: AttachmentMetadata[];
+  metadata?: Record<string, unknown>;
+  last_response_at?: string;
+  resolved_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AttachmentMetadata {
+  original_filename: string;
+  file_type: string;
+  file_size: number;
+  s3_key: string;
+  bucket: string;
+}
+
+export interface SupportTicketResponse {
+  id: string;
+  message: string;
+  is_internal: boolean;
+  admin_user_id?: string;
+  created_at: string;
 }
 
 export interface User {
@@ -87,20 +141,58 @@ export interface ActivityLog {
   user_id: string;
   organization_id: string;
   description: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   user_name?: string;
   organization_name?: string;
   created_at: string;
   updated_at: string;
 }
 
+export interface ImpersonationSession {
+  id: string;
+  actor_user_id: string;
+  target_user_id: string;
+  target_organization_id: string;
+  actor_token_id: string;
+  reason: string;
+  start_time: string;
+  end_time?: string;
+  is_active: boolean;
+  actions_performed?: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StartImpersonationRequest {
+  target_user_id: string;
+  reason: string;
+  expires_in_minutes?: number;
+}
+
+export interface StartImpersonationResponse {
+  session_id: string;
+  actor_token: string;
+  impersonation_url?: string;
+  target_user: {
+    id: string;
+    name: string;
+    email: string;
+    organization_id: string;
+  };
+  expires_at: string;
+  reason: string;
+}
+
 // Global auth helper - same pattern as main frontend
 let getAuthToken: (() => Promise<string | null>) | null = null;
 let signOutUser: (() => Promise<void>) | null = null;
 
+let authSystemInitialized = false;
+
 // Set the auth token getter (called from components that have access to useAuth)
 export function setAuthTokenGetter(getter: () => Promise<string | null>) {
   getAuthToken = getter;
+  authSystemInitialized = true;
 }
 
 // Set the sign out function (called from components that have access to useAuth)
@@ -110,8 +202,98 @@ export function setSignOutFunction(signOut: () => Promise<void>) {
 
 // Helper function to check if auth is ready
 export function isAuthReady(): boolean {
-  return getAuthToken !== null;
+  return getAuthToken !== null && authSystemInitialized;
 }
+
+// Reset auth system (useful for cleanup/re-initialization)
+export function resetAuthSystem() {
+  getAuthToken = null;
+  signOutUser = null;
+  authSystemInitialized = false;
+}
+
+// Wait for auth to be ready with timeout - same pattern as frontend
+export function waitForAuth(timeoutMs: number = 5000): Promise<boolean> {
+  return new Promise((resolve) => {
+    const startTime = Date.now();
+
+    const checkAuth = () => {
+      if (isAuthReady()) {
+        resolve(true);
+        return;
+      }
+
+      if (Date.now() - startTime >= timeoutMs) {
+        resolve(false);
+        return;
+      }
+
+      setTimeout(checkAuth, 100);
+    };
+
+    checkAuth();
+  });
+}
+
+// Race condition prevention utilities
+export const raceConditionUtils = {
+  /**
+   * Initialize auth with delays to prevent race conditions
+   * Use this pattern in useEffect for any page that makes immediate API calls
+   */
+  async initializeAuth(
+    isLoaded: boolean,
+    isSignedIn: boolean
+  ): Promise<boolean> {
+    if (!isLoaded || !isSignedIn) {
+      return false;
+    }
+
+    // Add delay to ensure auth system is fully ready
+    const delay =
+      typeof window !== "undefined" &&
+      window.performance?.navigation?.type === 1
+        ? 800
+        : 500;
+
+    await new Promise((resolve) => setTimeout(resolve, delay));
+
+    // Wait for auth to be ready
+    if (!isAuthReady()) {
+      const ready = await waitForAuth(5000);
+      return ready;
+    }
+
+    return true;
+  },
+
+  /**
+   * Add delay between API calls to prevent overwhelming the backend
+   */
+  async delayBetweenCalls(ms: number = 100): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  },
+
+  /**
+   * Create a cancellable async operation for useEffect cleanup
+   */
+  createCancellableOperation<T>(operation: () => Promise<T>): {
+    execute: () => Promise<T | null>;
+    cancel: () => void;
+  } {
+    let cancelled = false;
+
+    return {
+      execute: async () => {
+        if (cancelled) return null;
+        return await operation();
+      },
+      cancel: () => {
+        cancelled = true;
+      },
+    };
+  },
+};
 
 // Generic API request function with automatic authentication and first-user setup
 async function apiRequest<T>(
@@ -128,22 +310,19 @@ async function apiRequest<T>(
 
     // Automatically add authentication if available and required
     if (requireAuth) {
-      if (!getAuthToken) {
-        console.error(
-          "🚨 Admin API request requires auth but no auth token getter available"
-        );
-        console.log("🔍 Debug: endpoint =", endpoint);
-        return {
-          success: false,
-          error: "Authentication not available - please try again",
-        };
+      if (!isAuthReady()) {
+        const authReady = await waitForAuth(3000); // Wait up to 3 seconds
+        if (!authReady) {
+          return {
+            success: false,
+            error: "Authentication not ready - please try again",
+          };
+        }
       }
 
       try {
-        console.log("🔑 Getting auth token for admin API request:", endpoint);
-        const token = await getAuthToken();
+        const token = await getAuthToken!();
         if (token) {
-          console.log("✅ Admin auth token obtained, length:", token.length);
           headers.Authorization = `Bearer ${token}`;
 
           // Extract user ID from JWT token and add as header for backend
@@ -152,20 +331,17 @@ async function apiRequest<T>(
             const userId = payload.sub;
             if (userId) {
               headers["X-Clerk-User-Id"] = userId;
-              console.log("✅ Added Clerk User ID to headers:", userId);
             }
-          } catch (jwtError) {
-            console.warn("⚠️ Could not extract user ID from JWT:", jwtError);
+          } catch {
+            // Silently handle JWT parsing errors
           }
         } else {
-          console.error("❌ No admin auth token available");
           return {
             success: false,
             error: "No authentication token available",
           };
         }
-      } catch (error) {
-        console.error("❌ Failed to get admin auth token:", error);
+      } catch {
         return {
           success: false,
           error: "Failed to get authentication token",
@@ -180,21 +356,11 @@ async function apiRequest<T>(
 
     // Handle authentication errors with auto-setup retry
     if (response.status === 401 || response.status === 403) {
-      console.warn(
-        `🚨 Admin authentication failed with status ${response.status}`
-      );
-
       // If this is not the setup endpoint itself, try auto-setup first
       if (!endpoint.includes("/setup-first-user")) {
-        console.log("🔄 Attempting auto-setup for new admin user...");
-
         try {
           const setupResponse = await adminAPI.setupFirstUser();
           if (setupResponse.success && setupResponse.data?.user_created) {
-            console.log(
-              "✅ Auto-setup successful, retrying original request..."
-            );
-
             // Retry the original request
             const retryResponse = await fetch(url, {
               headers,
@@ -206,8 +372,8 @@ async function apiRequest<T>(
               return retryData;
             }
           }
-        } catch (setupError) {
-          console.error("❌ Auto-setup failed:", setupError);
+        } catch {
+          // Auto-setup failed, continue with normal error handling
         }
       }
 
@@ -224,7 +390,6 @@ async function apiRequest<T>(
     const data: ApiResponse<T> = await response.json();
     return data;
   } catch (error) {
-    console.error("Admin API request failed:", error);
     return {
       success: false,
       error:
@@ -304,6 +469,66 @@ export const adminAPI = {
     return response;
   },
 
+  // Dropdown Options Management API
+  getDropdownOptions: async () => {
+    const response = await apiRequest<{
+      team_sizes: DropdownOption[];
+      industries: DropdownOption[];
+      use_cases: DropdownOption[];
+    }>("/admin/dropdown-options");
+
+    return response;
+  },
+
+  createDropdownOption: async (
+    type: string,
+    option: Omit<DropdownOption, "id" | "created_at" | "updated_at">
+  ) => {
+    const response = await apiRequest<DropdownOption>(
+      "/admin/dropdown-options",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          type,
+          option,
+        }),
+      }
+    );
+
+    return response;
+  },
+
+  updateDropdownOption: async (
+    type: string,
+    id: string,
+    option: Omit<DropdownOption, "id" | "created_at" | "updated_at">
+  ) => {
+    const response = await apiRequest<DropdownOption>(
+      "/admin/dropdown-options",
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          type,
+          id,
+          option,
+        }),
+      }
+    );
+
+    return response;
+  },
+
+  deleteDropdownOption: async (type: string, id: string) => {
+    const response = await apiRequest<{ deleted_option: DropdownOption }>(
+      `/admin/dropdown-options/${type}/${id}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    return response;
+  },
+
   reactivateOrganization: async (organizationId: string) => {
     const response = await apiRequest<{
       id: string;
@@ -314,6 +539,36 @@ export const adminAPI = {
       method: "PUT",
       body: JSON.stringify({
         action: "reactivate",
+      }),
+    });
+
+    return response;
+  },
+
+  // Organization Notes API
+  getOrganizationNotes: async (organizationId: string) => {
+    const response = await apiRequest<{
+      organization_id: string;
+      organization_name: string;
+      admin_notes: string;
+      has_notes: boolean;
+      last_updated: string;
+    }>(`/admin/organizations/${organizationId}/notes`);
+
+    return response;
+  },
+
+  saveOrganizationNotes: async (organizationId: string, notes: string) => {
+    const response = await apiRequest<{
+      organization_id: string;
+      organization_name: string;
+      admin_notes: string;
+      has_notes: boolean;
+      updated_at: string;
+    }>(`/admin/organizations/${organizationId}/notes`, {
+      method: "PUT",
+      body: JSON.stringify({
+        notes,
       }),
     });
 
@@ -705,7 +960,10 @@ export const adminAPI = {
     setupKey?: string;
     role?: "platform_admin" | "platform_member";
   }) => {
-    const body: any = {};
+    const body: {
+      setup_key?: string;
+      role?: "platform_admin" | "platform_member";
+    } = {};
     if (options?.setupKey) body.setup_key = options.setupKey;
     if (options?.role) body.role = options.role;
 
@@ -773,5 +1031,181 @@ export const adminAPI = {
     }>(`/admin/activities?${queryParams}`);
 
     return response;
+  },
+
+  // Support Tickets API - for platform admins
+  getSupportTickets: async (
+    params: {
+      page?: number;
+      limit?: number;
+      status?: string;
+      category?: string;
+      priority?: string;
+      organization_id?: string;
+      user_id?: string;
+      search?: string;
+    } = {}
+  ) => {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append("page", params.page.toString());
+    if (params.limit) queryParams.append("limit", params.limit.toString());
+    if (params.status) queryParams.append("status", params.status);
+    if (params.category) queryParams.append("category", params.category);
+    if (params.priority) queryParams.append("priority", params.priority);
+    if (params.organization_id)
+      queryParams.append("organization_id", params.organization_id);
+    if (params.user_id) queryParams.append("user_id", params.user_id);
+    if (params.search) queryParams.append("search", params.search);
+
+    const response = await apiRequest<{
+      tickets: SupportTicket[];
+      pagination: PaginationInfo;
+      filters: {
+        status?: string;
+        category?: string;
+        priority?: string;
+        organization_id?: string;
+        user_id?: string;
+        search?: string;
+      };
+      statistics: {
+        total_open: number;
+        total_in_progress: number;
+        total_resolved: number;
+        total_closed: number;
+      };
+    }>(`/admin/support-tickets?${queryParams}`);
+
+    return response;
+  },
+
+  getSupportTicket: async (ticketId: string) => {
+    const response = await apiRequest<{
+      ticket: SupportTicket;
+    }>(`/admin/support-tickets/${ticketId}`);
+
+    return response;
+  },
+
+  updateSupportTicket: async (
+    ticketId: string,
+    data: {
+      status?: string;
+      priority?: string;
+      admin_notes?: string;
+      assigned_to?: string;
+    }
+  ) => {
+    const response = await apiRequest<{
+      ticket: SupportTicket;
+      message: string;
+    }>(`/admin/support-tickets/${ticketId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+
+    return response;
+  },
+
+  deleteSupportTicket: async (ticketId: string) => {
+    const response = await apiRequest<{
+      message: string;
+    }>(`/admin/support-tickets/${ticketId}`, {
+      method: "DELETE",
+    });
+
+    return response;
+  },
+
+  addSupportTicketResponse: async (
+    ticketId: string,
+    data: {
+      response: string;
+      is_internal?: boolean;
+    }
+  ) => {
+    const response = await apiRequest<{
+      ticket: SupportTicket;
+      message: string;
+    }>(`/admin/support-tickets/${ticketId}/response`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+
+    return response;
+  },
+
+  // Download attachment
+  downloadAttachment: async (s3Key: string) =>
+    apiRequest<{
+      download_url: string;
+      expires_in: number;
+    }>(`/storage/download-attachment/${encodeURIComponent(s3Key)}`),
+};
+
+// Impersonation API endpoints
+export const impersonationApi = {
+  // Start impersonating a user
+  startImpersonation: async (
+    data: StartImpersonationRequest
+  ): Promise<ApiResponse<StartImpersonationResponse>> => {
+    return apiRequest<StartImpersonationResponse>("/admin/impersonate", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  // End an impersonation session
+  endImpersonation: async (
+    sessionId: string
+  ): Promise<
+    ApiResponse<{
+      session_id: string;
+      duration_minutes: number;
+      actions_performed: string[];
+    }>
+  > => {
+    return apiRequest(`/admin/impersonate/${sessionId}`, {
+      method: "DELETE",
+    });
+  },
+
+  // Get impersonation sessions
+  getImpersonationSessions: async (params?: {
+    page?: number;
+    limit?: number;
+    active_only?: boolean;
+    actor_user_id?: string;
+    target_user_id?: string;
+  }): Promise<
+    ApiResponse<{
+      sessions: ImpersonationSession[];
+      pagination: PaginationInfo;
+    }>
+  > => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    if (params?.active_only)
+      queryParams.append("active_only", params.active_only.toString());
+    if (params?.actor_user_id)
+      queryParams.append("actor_user_id", params.actor_user_id);
+    if (params?.target_user_id)
+      queryParams.append("target_user_id", params.target_user_id);
+
+    const url = `/admin/impersonate/sessions${
+      queryParams.toString() ? `?${queryParams.toString()}` : ""
+    }`;
+    return apiRequest(url);
+  },
+
+  // Revoke an actor token
+  revokeActorToken: async (
+    actorTokenId: string
+  ): Promise<ApiResponse<{ message: string }>> => {
+    return apiRequest("/admin/impersonate/revoke-token", {
+      method: "POST",
+      body: JSON.stringify({ actor_token_id: actorTokenId }),
+    });
   },
 };

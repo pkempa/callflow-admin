@@ -4,10 +4,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth, useUser, useClerk } from "@clerk/nextjs";
 import {
   LayoutDashboard,
-  Users,
   CreditCard,
   BarChart3,
-  Settings,
   Menu,
   X,
   ChevronDown,
@@ -16,8 +14,9 @@ import {
   Shield,
   FileText,
   Building,
-  Bug,
   Sliders,
+  ListOrdered,
+  MessageSquare,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { adminAPI } from "@/lib/admin-api";
@@ -59,7 +58,7 @@ const navigationSections = [
   {
     name: "User Management",
     items: [
-      { name: "Organizations", href: "/users", icon: Building },
+      { name: "Organizations", href: "/organizations", icon: Building },
       { name: "Platform Users", href: "/platform-users", icon: Shield },
     ],
   },
@@ -68,10 +67,19 @@ const navigationSections = [
     items: [{ name: "Plans", href: "/plans", icon: CreditCard }],
   },
   {
-    name: "System & Debug",
+    name: "System & Tools",
     items: [
       { name: "System Logs", href: "/logs", icon: FileText },
-      { name: "Debug Tools", href: "/debug", icon: Bug },
+      {
+        name: "Dropdown Options",
+        href: "/dropdown-options",
+        icon: ListOrdered,
+      },
+      {
+        name: "Support Tickets",
+        href: "/support-tickets",
+        icon: MessageSquare,
+      },
       { name: "Settings", href: "/settings", icon: Sliders },
     ],
   },
@@ -88,7 +96,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [backendUser, setBackendUser] = useState<BackendUserProfile | null>(
     null
   );
-  const [loadingProfile, setLoadingProfile] = useState(true);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Fetch user profile from backend
@@ -97,17 +104,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       if (!isSignedIn) return;
 
       try {
-        setLoadingProfile(true);
         const response = await adminAPI.getUserProfile();
         if (response.success && response.data) {
           setBackendUser(response.data);
-        } else {
-          console.error("Failed to load user profile:", response.error);
         }
-      } catch (error) {
-        console.error("Error loading user profile:", error);
-      } finally {
-        setLoadingProfile(false);
+      } catch {
+        // Silently handle profile loading errors
       }
     };
 
@@ -135,8 +137,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     try {
       await signOut();
       router.push("/sign-in");
-    } catch (error) {
-      console.error("Error signing out:", error);
+    } catch {
+      // Silently handle sign out errors
     }
   };
 

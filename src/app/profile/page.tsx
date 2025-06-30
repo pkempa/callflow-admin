@@ -80,9 +80,8 @@ export default function ProfilePage() {
         } else {
           setError(response.error || "Failed to load profile");
         }
-      } catch (err) {
+      } catch {
         setError("Failed to load profile data");
-        console.error("Profile load error:", err);
       } finally {
         setLoading(false);
       }
@@ -125,15 +124,14 @@ export default function ProfilePage() {
               firstName: editForm.firstName,
               lastName: editForm.lastName,
             });
-          } catch (clerkError) {
-            console.warn("Could not update Clerk user:", clerkError);
+          } catch {
+            // Silently handle Clerk update errors
           }
         }
       } else {
         setError(response.error || "Failed to update profile");
       }
-    } catch (error) {
-      console.error("Error updating profile:", error);
+    } catch {
       setError("Failed to update profile");
     } finally {
       setIsSaving(false);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { adminAPI } from "@/lib/admin-api";
 
@@ -10,7 +10,7 @@ interface PlatformUser {
   email: string;
   first_name: string;
   last_name: string;
-  role: string; // Accept any string role from API
+  role: string; // Accept any string role from API  // eslint-disable-line @typescript-eslint/no-explicit-any
   status: string;
   organization_id: string;
   organization_name: string;
@@ -61,10 +61,14 @@ export default function PlatformUsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Load users
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const params: any = {};
+      const params: {
+        role?: string;
+        status?: string;
+        search?: string;
+      } = {};
       if (roleFilter) params.role = roleFilter;
       if (statusFilter) params.status = statusFilter;
       if (searchQuery) params.search = searchQuery;
@@ -76,17 +80,16 @@ export default function PlatformUsersPage() {
       } else {
         setError(response.error || "Failed to load users");
       }
-    } catch (err) {
+    } catch {
       setError("Failed to load users");
-      console.error("Error loading users:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [roleFilter, statusFilter, searchQuery]);
 
   useEffect(() => {
     loadUsers();
-  }, [roleFilter, statusFilter, searchQuery]);
+  }, [loadUsers]);
 
   // Create user
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -109,16 +112,21 @@ export default function PlatformUsersPage() {
       } else {
         setError(response.error || "Failed to create user");
       }
-    } catch (err) {
+    } catch {
       setError("Failed to create user");
-      console.error("Error creating user:", err);
     } finally {
       setCreateLoading(false);
     }
   };
 
   // Role badge styling
-  const getRoleBadge = (role: string, platformContext: any) => {
+  const getRoleBadge = (
+    role: string,
+    platformContext: {
+      is_platform_admin: boolean;
+      is_platform_member: boolean;
+    }
+  ) => {
     if (platformContext.is_platform_admin) {
       return (
         <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
@@ -418,7 +426,11 @@ export default function PlatformUsersPage() {
                         onChange={(e) =>
                           setCreateForm({
                             ...createForm,
-                            role: e.target.value as any,
+                            role: e.target.value as
+                              | "platform_admin"
+                              | "platform_member"
+                              | "admin"
+                              | "member",
                           })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"

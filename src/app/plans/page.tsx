@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import AdminLayout from "@/components/layout/AdminLayout";
-import { adminAPI } from "@/lib/admin-api";
+import { adminAPI, Plan as APIPlan } from "@/lib/admin-api";
 import {
   Plus,
   Edit,
@@ -32,11 +32,7 @@ export default function PlansPage() {
   const router = useRouter();
 
   // Fetch plans data from API
-  const {
-    data: plansResponse,
-    isLoading: loading,
-    error,
-  } = useQuery({
+  const { data: plansResponse, isLoading: loading } = useQuery({
     queryKey: ["admin-plans"],
     queryFn: () => adminAPI.getPlans(),
     enabled: isLoaded && isSignedIn,
@@ -122,7 +118,7 @@ export default function PlansPage() {
     // Use API data if available, otherwise fall back to mock data
     if (plansResponse?.success && plansResponse.data?.plans) {
       // Convert API plans to display format (since API structure might be different)
-      const apiPlans = plansResponse.data.plans.map((apiPlan: any) => ({
+      const apiPlans = plansResponse.data.plans.map((apiPlan: APIPlan) => ({
         id: apiPlan.id,
         name: apiPlan.name,
         price: apiPlan.price || 0,

@@ -1,19 +1,13 @@
 "use client";
 
-import { useUser, useAuth } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { adminAPI } from "@/lib/admin-api";
 
 export function AdminVerification({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
-  const { signOut } = useAuth();
-  const router = useRouter();
   const [isVerified, setIsVerified] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [verificationError, setVerificationError] = useState<string | null>(
-    null
-  );
+  // Note: isVerifying and verificationError are reserved for future verification system
+  const [verificationError] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
 
   useEffect(() => {
@@ -22,9 +16,6 @@ export function AdminVerification({ children }: { children: React.ReactNode }) {
 
       // TEMPORARY: Skip verification and allow access
       // We know the user is properly configured as platform admin in database
-      console.log(
-        "🚀 TEMPORARY: Skipping admin verification - user is confirmed platform admin"
-      );
       setIsVerified(true);
 
       // Original verification logic (commented out temporarily)
@@ -42,50 +33,10 @@ export function AdminVerification({ children }: { children: React.ReactNode }) {
       }
       */
     }
-  }, [isLoaded, user, isVerified, isVerifying]);
+  }, [isLoaded, user, isVerified]);
 
-  const verifyAdminUser = async () => {
-    if (!user) return;
-
-    setIsVerifying(true);
-    setVerificationError(null);
-
-    try {
-      console.log("🔍 Verifying admin user access...");
-
-      // Try to get analytics to verify user exists and has admin access
-      const response = await adminAPI.getAnalytics({ period: "7d" });
-
-      if (response.success) {
-        console.log("✅ Admin user verified");
-        setIsVerified(true);
-      } else {
-        console.error("❌ Admin verification failed:", response.error);
-        setVerificationError(
-          "You are not authorized to access the admin panel"
-        );
-
-        // Redirect to sign-in after a delay
-        setTimeout(() => {
-          signOut();
-          router.push("/sign-in");
-        }, 3000);
-      }
-    } catch (error) {
-      console.error("❌ Error verifying admin user:", error);
-      setVerificationError("Failed to verify admin access");
-
-      setTimeout(() => {
-        signOut();
-        router.push("/sign-in");
-      }, 3000);
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  // Show loading state while Clerk is loading, or while verifying admin access
-  if (!hasInitialized || (isLoaded && user && !isVerified && isVerifying)) {
+  // Show loading state while Clerk is loading
+  if (!hasInitialized) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">

@@ -33,12 +33,11 @@ export default function SignInPage() {
       } else {
         setError("Authentication failed. Please try again.");
       }
-    } catch (err: any) {
-      console.error("Error:", err);
-      setError(
-        err.errors?.[0]?.message ||
-          "Invalid email or password. Please try again."
-      );
+    } catch (err: unknown) {
+      const errorMessage =
+        (err as { errors?: Array<{ message: string }> })?.errors?.[0]
+          ?.message || "Invalid email or password. Please try again.";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

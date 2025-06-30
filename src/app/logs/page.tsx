@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { adminAPI } from "@/lib/admin-api";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 
 interface LogEntry {
   timestamp: string;
@@ -16,7 +15,7 @@ interface LogEntry {
     component?: string;
     correlationId?: string;
   };
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   error?: {
     name: string;
     message: string;
@@ -213,8 +212,80 @@ export default function LogViewerPage() {
     search_text: "",
   });
 
+  const fetchLogs = useCallback(
+    async (showLoading = true) => {
+      try {
+        if (showLoading) {
+          setLoading(true);
+        }
+        setError(null);
+
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (filters.log_source !== "all")
+          params.append("log_source", filters.log_source);
+        if (filters.level) params.append("level", filters.level);
+        if (filters.user_id) params.append("user_id", filters.user_id);
+        if (filters.organization_id)
+          params.append("organization_id", filters.organization_id);
+        if (filters.search_text)
+          params.append("search_text", filters.search_text);
+        if (filters.start_time)
+          params.append(
+            "start_time",
+            new Date(filters.start_time).toISOString()
+          );
+        if (filters.end_time)
+          params.append("end_time", new Date(filters.end_time).toISOString());
+        params.append("page", pagination.current_page.toString());
+        params.append("limit", "50");
+
+        // Make API call to admin logs endpoint
+        let data: LogSearchResponse;
+
+        try {
+          const response = await fetch(`/api/admin/logs?${params}`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (!response.ok) {
+            // If API fails, use mock data for now
+            data = getMockLogData(filters);
+          } else {
+            data = await response.json();
+          }
+        } catch {
+          data = getMockLogData(filters);
+        }
+
+        setLogs(data.logs || []);
+        setPagination(
+          data.pagination || {
+            current_page: 1,
+            total_pages: 1,
+            total_items: 0,
+            per_page: 50,
+            has_next: false,
+            has_previous: false,
+          }
+        );
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to fetch logs";
+        setError(errorMessage);
+      } finally {
+        if (showLoading) {
+          setLoading(false);
+        }
+      }
+    },
+    [filters, pagination.current_page]
+  );
+
   useEffect(() => {
-    console.log("Log viewer page mounted");
     fetchLogs();
 
     return () => {
@@ -222,21 +293,18 @@ export default function LogViewerPage() {
         clearInterval(refreshInterval.current);
       }
     };
-  }, []);
+  }, [fetchLogs]);
 
   useEffect(() => {
     if (autoRefresh) {
       refreshInterval.current = setInterval(() => {
         fetchLogs(false); // Don't show loading state for auto-refresh
       }, 30000); // Refresh every 30 seconds
-
-      console.log("Auto-refresh enabled for logs");
     } else {
       if (refreshInterval.current) {
         clearInterval(refreshInterval.current);
         refreshInterval.current = null;
       }
-      console.log("Auto-refresh disabled for logs");
     }
 
     return () => {
@@ -244,90 +312,7 @@ export default function LogViewerPage() {
         clearInterval(refreshInterval.current);
       }
     };
-  }, [autoRefresh]);
-
-  const fetchLogs = async (showLoading = true) => {
-    try {
-      if (showLoading) {
-        setLoading(true);
-      }
-      setError(null);
-
-      // Build query parameters
-      const params = new URLSearchParams();
-      if (filters.log_source !== "all")
-        params.append("log_source", filters.log_source);
-      if (filters.level) params.append("level", filters.level);
-      if (filters.user_id) params.append("user_id", filters.user_id);
-      if (filters.organization_id)
-        params.append("organization_id", filters.organization_id);
-      if (filters.search_text)
-        params.append("search_text", filters.search_text);
-      if (filters.start_time)
-        params.append("start_time", new Date(filters.start_time).toISOString());
-      if (filters.end_time)
-        params.append("end_time", new Date(filters.end_time).toISOString());
-      params.append("page", pagination.current_page.toString());
-      params.append("limit", "50");
-
-      console.log("Fetching logs with filters", {
-        filters,
-        page: pagination.current_page,
-      });
-
-      // Make API call to admin logs endpoint
-      let data: LogSearchResponse;
-
-      try {
-        const response = await fetch(`/api/admin/logs?${params}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!response.ok) {
-          // If API fails, use mock data for now
-          console.warn(`API failed with ${response.status}, using mock data`);
-          data = getMockLogData(filters);
-        } else {
-          data = await response.json();
-        }
-      } catch (fetchError) {
-        console.warn(
-          "API endpoint not available, using mock data:",
-          fetchError
-        );
-        data = getMockLogData(filters);
-      }
-
-      setLogs(data.logs || []);
-      setPagination(
-        data.pagination || {
-          current_page: 1,
-          total_pages: 1,
-          total_items: 0,
-          per_page: 50,
-          has_next: false,
-          has_previous: false,
-        }
-      );
-
-      console.log("Logs fetched successfully", {
-        count: data.logs?.length || 0,
-        total: data.pagination?.total_items || 0,
-      });
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to fetch logs";
-      setError(errorMessage);
-      console.error("Failed to fetch logs", err, { filters });
-    } finally {
-      if (showLoading) {
-        setLoading(false);
-      }
-    }
-  };
+  }, [autoRefresh, fetchLogs]);
 
   const handleFilterChange = (key: keyof LogFilters, value: string) => {
     setFilters((prev) => ({
@@ -339,7 +324,6 @@ export default function LogViewerPage() {
   const handleSearch = () => {
     setPagination((prev) => ({ ...prev, current_page: 1 }));
     fetchLogs();
-    console.log("LOG_SEARCH", { filters });
   };
 
   const handlePageChange = (page: number) => {
@@ -398,10 +382,10 @@ export default function LogViewerPage() {
           log.timestamp,
           log.level,
           log.log_source,
-          log.message.replace(/"/g, '""'),
+          log.message.replace(/"/g, "\u0022\u0022"),
           log.context?.userId || "",
           log.context?.organizationId || "",
-          JSON.stringify(log.metadata || {}).replace(/"/g, '""'),
+          JSON.stringify(log.metadata || {}).replace(/"/g, "\u0022\u0022"),
         ].join(",");
       })
       .join("\n");
@@ -417,8 +401,6 @@ export default function LogViewerPage() {
     a.download = `callflow-logs-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
-
-    console.log("LOGS_EXPORTED", { count: logs.length, filters });
   };
 
   if (loading) {

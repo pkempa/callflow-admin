@@ -2,38 +2,35 @@
 
 import { useAuth } from "@clerk/nextjs";
 import { useEffect } from "react";
-import { setAuthTokenGetter, setSignOutFunction } from "@/lib/admin-api";
+import {
+  setAuthTokenGetter,
+  setSignOutFunction,
+  resetAuthSystem,
+} from "@/lib/admin-api";
 
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
-  const { getToken, signOut, isLoaded } = useAuth();
+  const { getToken, signOut, isLoaded, isSignedIn } = useAuth();
 
   useEffect(() => {
-    // Only set up auth functions when Clerk is fully loaded
-    if (isLoaded && getToken && signOut) {
-      console.log("🔧 Setting up admin auth functions");
+    // Reset auth system on mount to handle refresh scenarios
+    resetAuthSystem();
 
-      // Wrap getToken to add logging
+    // Set up auth functions immediately when Clerk is fully loaded
+    if (isLoaded && getToken && signOut) {
+      // Wrap getToken to add error handling
       const wrappedGetToken = async () => {
         try {
           const token = await getToken();
-          if (token) {
-            console.log("✅ Admin auth token retrieved successfully");
-          } else {
-            console.warn("⚠️ No admin auth token available");
-          }
           return token;
-        } catch (error) {
-          console.error("❌ Failed to get admin auth token:", error);
+        } catch {
           return null;
         }
       };
 
       setAuthTokenGetter(wrappedGetToken);
       setSignOutFunction(signOut);
-
-      console.log("✅ Admin auth functions setup completed");
     }
-  }, [getToken, signOut, isLoaded]);
+  }, [getToken, signOut, isLoaded, isSignedIn]);
 
   return <>{children}</>;
 }

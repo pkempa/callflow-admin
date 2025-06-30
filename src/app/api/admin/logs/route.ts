@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     // Backend API URL
     const apiUrl =
       process.env.NEXT_PUBLIC_API_URL ||
-      "https://ca6ofgmah9.execute-api.us-east-1.amazonaws.com/prod";
+      "https://gln3f6l37g.execute-api.us-east-1.amazonaws.com/prod";
 
     // Forward request to backend
     const backendUrl = `${apiUrl}/admin/logs${
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     // Backend API URL
     const apiUrl =
       process.env.NEXT_PUBLIC_API_URL ||
-      "https://ca6ofgmah9.execute-api.us-east-1.amazonaws.com/prod";
+      "https://gln3f6l37g.execute-api.us-east-1.amazonaws.com/prod";
 
     // Forward request to backend
     const backendUrl = `${apiUrl}/admin/logs`;

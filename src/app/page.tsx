@@ -2,62 +2,100 @@
 
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState, useCallback } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
-import { adminAPI } from "@/lib/admin-api";
+import {
+  adminAPI,
+  isAuthReady,
+  waitForAuth,
+  PaginationInfo,
+  ActivityLog,
+} from "@/lib/admin-api";
 import {
   Users,
   CreditCard,
-  Phone,
   DollarSign,
   TrendingUp,
   TrendingDown,
   ArrowRight,
   BarChart3,
   Building,
+  RefreshCw,
 } from "lucide-react";
 
-const stats = [
+// Analytics interface to match the API response
+interface AnalyticsData {
+  summary: {
+    total_organizations: number;
+    total_users: number;
+    active_users: number;
+    total_wallet_balance: number;
+    recent_registrations: number;
+    period: string;
+    date_range: { start: string; end: string };
+  };
+  growth_metrics: {
+    user_growth_percentage: number;
+    organization_growth_percentage: number;
+    revenue_growth_percentage: number;
+  };
+  distributions: {
+    plans: Record<string, number>;
+    user_roles: Record<string, number>;
+    top_plans: [string, number][];
+  };
+  admin_context: {
+    is_platform_admin: boolean;
+    user_organization_id: string;
+    organizations_analyzed: number;
+  };
+}
+
+// Activities interface to match the API response
+interface ActivitiesData {
+  activities: ActivityLog[];
+  pagination: PaginationInfo;
+}
+
+const mockStats = [
   {
     id: 1,
-    name: "Total Users",
-    value: "1,940",
-    change: "+12%",
+    name: "Total Organizations",
+    value: "—",
+    change: "—",
     changeType: "increase",
-    icon: Users,
+    icon: Building,
     color: "bg-blue-500",
   },
   {
     id: 2,
-    name: "Active Subscriptions",
-    value: "456",
-    change: "+8%",
+    name: "Total Users",
+    value: "—",
+    change: "—",
     changeType: "increase",
-    icon: CreditCard,
+    icon: Users,
     color: "bg-green-500",
   },
   {
     id: 3,
-    name: "Total Calls Today",
-    value: "2,341",
-    change: "+15%",
+    name: "Active Users",
+    value: "—",
+    change: "—",
     changeType: "increase",
-    icon: Phone,
+    icon: BarChart3,
     color: "bg-purple-500",
   },
   {
     id: 4,
-    name: "Monthly Revenue",
-    value: "$28,450",
-    change: "-2%",
-    changeType: "decrease",
+    name: "Total Wallet Balance",
+    value: "—",
+    change: "—",
+    changeType: "increase",
     icon: DollarSign,
     color: "bg-orange-500",
   },
 ];
 
-// Helper function to format relative time
 function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
@@ -77,7 +115,6 @@ function formatRelativeTime(dateString: string): string {
   return date.toLocaleDateString();
 }
 
-// Helper function to get activity type color
 function getActivityTypeColor(activityType: string): string {
   switch (activityType) {
     case "user_registered":
@@ -105,23 +142,10 @@ export default function AdminDashboard() {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
 
-  // Fetch analytics data
-  const { data: analyticsResponse, isLoading: analyticsLoading } = useQuery({
-    queryKey: ["admin-analytics"],
-    queryFn: () => adminAPI.getAnalytics({ period: "30d" }),
-    enabled: isLoaded && isSignedIn,
-    retry: 1,
-    retryDelay: 1000,
-  });
-
-  // Fetch recent activity data
-  const { data: activitiesResponse, isLoading: activitiesLoading } = useQuery({
-    queryKey: ["admin-activities"],
-    queryFn: () => adminAPI.getActivities({ limit: 10 }),
-    enabled: isLoaded && isSignedIn,
-    retry: 1,
-    retryDelay: 1000,
-  });
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [activities, setActivities] = useState<ActivitiesData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -129,8 +153,83 @@ export default function AdminDashboard() {
     }
   }, [isLoaded, isSignedIn, router]);
 
-  // Get analytics data or use fallback
-  const analytics = analyticsResponse?.success ? analyticsResponse.data : null;
+  const loadData = useCallback(async () => {
+    if (loading) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Wait for auth to be ready
+      if (!isAuthReady()) {
+        const authReady = await waitForAuth(5000);
+        if (!authReady) {
+          throw new Error("Authentication not ready");
+        }
+      }
+
+      // Add delay to ensure auth stability
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Load analytics
+      const analyticsRes = await adminAPI.getAnalytics({ period: "30d" });
+      if (analyticsRes.success && analyticsRes.data) {
+        setAnalytics(analyticsRes.data);
+      }
+
+      // Load activities
+      try {
+        const activitiesRes = await adminAPI.getActivities({ limit: 10 });
+        if (activitiesRes?.success && activitiesRes.data) {
+          setActivities(activitiesRes.data);
+        } else {
+          setActivities({
+            activities: [],
+            pagination: {
+              page: 1,
+              limit: 10,
+              total: 0,
+              total_pages: 0,
+              has_next: false,
+              has_prev: false,
+            },
+          });
+        }
+      } catch {
+        // Activities failure is not critical for dashboard
+        setActivities({
+          activities: [],
+          pagination: {
+            page: 1,
+            limit: 10,
+            total: 0,
+            total_pages: 0,
+            has_next: false,
+            has_prev: false,
+          },
+        });
+      }
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to load dashboard data";
+      setError(errorMessage);
+    }
+
+    setLoading(false);
+  }, [loading]);
+
+  // Auto-load on mount when auth is ready
+  useEffect(() => {
+    if (isLoaded && isSignedIn && !analytics && !activities && !loading) {
+      const timer = setTimeout(() => {
+        loadData();
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isLoaded, isSignedIn, analytics, activities, loading, loadData]);
 
   if (!isLoaded) {
     return (
@@ -144,207 +243,154 @@ export default function AdminDashboard() {
     return null;
   }
 
+  const displayStats = analytics
+    ? [
+        {
+          name: "Total Organizations",
+          value: analytics.summary.total_organizations.toLocaleString(),
+          change: `${
+            analytics.growth_metrics.organization_growth_percentage >= 0
+              ? "+"
+              : ""
+          }${analytics.growth_metrics.organization_growth_percentage}%`,
+          changeType:
+            analytics.growth_metrics.organization_growth_percentage >= 0
+              ? "increase"
+              : "decrease",
+          icon: Building,
+          color: "bg-blue-500",
+        },
+        {
+          name: "Total Users",
+          value: analytics.summary.total_users.toLocaleString(),
+          change: `${
+            analytics.growth_metrics.user_growth_percentage >= 0 ? "+" : ""
+          }${analytics.growth_metrics.user_growth_percentage}%`,
+          changeType:
+            analytics.growth_metrics.user_growth_percentage >= 0
+              ? "increase"
+              : "decrease",
+          icon: Users,
+          color: "bg-green-500",
+        },
+        {
+          name: "Active Users",
+          value: analytics.summary.active_users.toLocaleString(),
+          change: "0%",
+          changeType: "increase",
+          icon: BarChart3,
+          color: "bg-purple-500",
+        },
+        {
+          name: "Total Wallet Balance",
+          value: `$${analytics.summary.total_wallet_balance.toLocaleString()}`,
+          change: `${
+            analytics.growth_metrics.revenue_growth_percentage >= 0 ? "+" : ""
+          }${analytics.growth_metrics.revenue_growth_percentage}%`,
+          changeType:
+            analytics.growth_metrics.revenue_growth_percentage >= 0
+              ? "increase"
+              : "decrease",
+          icon: DollarSign,
+          color: "bg-orange-500",
+        },
+      ]
+    : mockStats;
+
   return (
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Welcome to the CallFlowHQ Admin Panel</p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-gray-600">
+              Welcome to the CallFlowHQ Admin Panel
+            </p>
+          </div>
+          <button
+            onClick={loadData}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            {loading ? "Loading..." : "Refresh"}
+          </button>
         </div>
+
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-5 w-5 text-red-400"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">
+                  Error loading dashboard data
+                </h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>{error}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {analyticsLoading
-            ? // Loading state
-              Array.from({ length: 4 }, (_, i) => (
-                <div
-                  key={i}
-                  className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 animate-pulse"
-                >
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 bg-gray-300 rounded-lg"></div>
-                    <div className="ml-4 flex-1">
-                      <div className="h-4 bg-gray-300 rounded w-24 mb-2"></div>
-                      <div className="h-6 bg-gray-300 rounded w-16"></div>
-                    </div>
+          {displayStats.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <div
+                key={index}
+                className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-center">
+                  <div className={`p-3 rounded-lg ${stat.color}`}>
+                    <Icon className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">
+                      {stat.name}
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {stat.value}
+                    </p>
                   </div>
                 </div>
-              ))
-            : analytics
-            ? // Real data
-              [
-                {
-                  name: "Total Organizations",
-                  value: analytics.summary.total_organizations.toLocaleString(),
-                  change:
-                    analytics.growth_metrics.organization_growth_percentage ===
-                    0
-                      ? "0%"
-                      : `${
-                          analytics.growth_metrics
-                            .organization_growth_percentage >= 0
-                            ? "+"
-                            : ""
-                        }${
-                          analytics.growth_metrics
-                            .organization_growth_percentage
-                        }%`,
-                  changeType:
-                    analytics.growth_metrics.organization_growth_percentage >= 0
-                      ? "increase"
-                      : "decrease",
-                  icon: Building,
-                  color: "bg-blue-500",
-                },
-                {
-                  name: "Total Users",
-                  value: analytics.summary.total_users.toLocaleString(),
-                  change:
-                    analytics.growth_metrics.user_growth_percentage === 0
-                      ? "0%"
-                      : `${
-                          analytics.growth_metrics.user_growth_percentage >= 0
-                            ? "+"
-                            : ""
-                        }${analytics.growth_metrics.user_growth_percentage}%`,
-                  changeType:
-                    analytics.growth_metrics.user_growth_percentage >= 0
-                      ? "increase"
-                      : "decrease",
-                  icon: Users,
-                  color: "bg-green-500",
-                },
-                {
-                  name: "Active Users",
-                  value: analytics.summary.active_users.toLocaleString(),
-                  change:
-                    ((analytics.growth_metrics as any)
-                      .active_users_growth_percentage ?? 0) === 0
-                      ? "0%"
-                      : `${
-                          ((analytics.growth_metrics as any)
-                            .active_users_growth_percentage ?? 0) >= 0
-                            ? "+"
-                            : ""
-                        }${
-                          (analytics.growth_metrics as any)
-                            .active_users_growth_percentage ?? 0
-                        }%`,
-                  changeType:
-                    ((analytics.growth_metrics as any)
-                      .active_users_growth_percentage ?? 0) >= 0
-                      ? "increase"
-                      : "decrease",
-                  icon: BarChart3,
-                  color: "bg-purple-500",
-                },
-                {
-                  name: "Total Wallet Balance",
-                  value: `$${analytics.summary.total_wallet_balance.toLocaleString()}`,
-                  change:
-                    analytics.growth_metrics.revenue_growth_percentage === 0
-                      ? "0%"
-                      : `${
-                          analytics.growth_metrics.revenue_growth_percentage >=
-                          0
-                            ? "+"
-                            : ""
-                        }${
-                          analytics.growth_metrics.revenue_growth_percentage
-                        }%`,
-                  changeType:
-                    analytics.growth_metrics.revenue_growth_percentage >= 0
-                      ? "increase"
-                      : "decrease",
-                  icon: DollarSign,
-                  color: "bg-orange-500",
-                },
-              ].map((stat, index) => {
-                const Icon = stat.icon;
-                return (
-                  <div
-                    key={index}
-                    className="bg-white rounded-lg shadow-sm p-6 border border-gray-200"
+                <div className="mt-4 flex items-center">
+                  {stat.changeType === "increase" ? (
+                    <TrendingUp className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <TrendingDown className="h-4 w-4 text-red-500" />
+                  )}
+                  <span
+                    className={`ml-1 text-sm font-medium ${
+                      stat.changeType === "increase"
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
                   >
-                    <div className="flex items-center">
-                      <div className={`p-3 rounded-lg ${stat.color}`}>
-                        <Icon className="h-6 w-6 text-white" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">
-                          {stat.name}
-                        </p>
-                        <p className="text-2xl font-bold text-gray-900">
-                          {stat.value}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-4 flex items-center">
-                      {stat.changeType === "increase" ? (
-                        <TrendingUp className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <TrendingDown className="h-4 w-4 text-red-500" />
-                      )}
-                      <span
-                        className={`ml-1 text-sm font-medium ${
-                          stat.changeType === "increase"
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {stat.change}
-                      </span>
-                      <span className="ml-1 text-sm text-gray-500">
-                        from last month
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            : // Fallback to mock data
-              stats.map((stat) => {
-                const Icon = stat.icon;
-                return (
-                  <div
-                    key={stat.id}
-                    className="bg-white rounded-lg shadow-sm p-6 border border-gray-200"
-                  >
-                    <div className="flex items-center">
-                      <div className={`p-3 rounded-lg ${stat.color}`}>
-                        <Icon className="h-6 w-6 text-white" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">
-                          {stat.name}
-                        </p>
-                        <p className="text-2xl font-bold text-gray-900">
-                          {stat.value}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-4 flex items-center">
-                      {stat.changeType === "increase" ? (
-                        <TrendingUp className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <TrendingDown className="h-4 w-4 text-red-500" />
-                      )}
-                      <span
-                        className={`ml-1 text-sm font-medium ${
-                          stat.changeType === "increase"
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {stat.change}
-                      </span>
-                      <span className="ml-1 text-sm text-gray-500">
-                        from last month
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                    {stat.change}
+                  </span>
+                  <span className="ml-1 text-sm text-gray-500">
+                    from last month
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Quick Actions */}
@@ -357,13 +403,13 @@ export default function AdminDashboard() {
           <div className="p-6">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <button
-                onClick={() => router.push("/users")}
+                onClick={() => router.push("/organizations")}
                 className="flex items-center justify-between p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
               >
                 <div className="flex items-center">
-                  <Users className="h-5 w-5 text-blue-600" />
+                  <Building className="h-5 w-5 text-blue-600" />
                   <span className="ml-3 text-sm font-medium text-blue-900">
-                    Manage Users
+                    Manage Organizations
                   </span>
                 </div>
                 <ArrowRight className="h-4 w-4 text-blue-600" />
@@ -406,31 +452,12 @@ export default function AdminDashboard() {
             </h2>
           </div>
           <div className="p-6">
-            {activitiesLoading ? (
-              // Loading state
+            {activities?.activities && activities.activities.length > 0 ? (
               <div className="space-y-4">
-                {Array.from({ length: 5 }, (_, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center space-x-3 animate-pulse"
-                  >
-                    <div className="w-2 h-2 rounded-full bg-gray-300" />
-                    <div className="flex-1 min-w-0">
-                      <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-                    </div>
-                    <div className="h-3 bg-gray-300 rounded w-16"></div>
-                  </div>
-                ))}
-              </div>
-            ) : activitiesResponse?.success &&
-              activitiesResponse.data?.activities &&
-              activitiesResponse.data.activities.length > 0 ? (
-              // Real activity data
-              <div className="space-y-4">
-                {activitiesResponse.data.activities.map((activity) => (
+                {activities.activities.map((activity: ActivityLog) => (
                   <div
                     key={activity.id}
-                    className="flex items-center space-x-3"
+                    className="flex items-center space-x-3 py-2"
                   >
                     <div
                       className={`w-2 h-2 rounded-full ${getActivityTypeColor(
@@ -453,16 +480,19 @@ export default function AdminDashboard() {
                         )}
                       </p>
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 flex-shrink-0">
                       {formatRelativeTime(activity.created_at)}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              // Empty state
               <div className="text-center py-8">
-                <div className="text-gray-500">No recent activity found</div>
+                <div className="text-gray-500">
+                  {loading
+                    ? "Loading activities..."
+                    : "No recent activity found"}
+                </div>
               </div>
             )}
           </div>
