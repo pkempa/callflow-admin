@@ -126,6 +126,94 @@ export interface Parameter {
   tier?: string;
 }
 
+// Company information types
+export interface CompanyInfo {
+  name: string;
+  legal_name: string;
+  description: string;
+  contact: {
+    support_email: string;
+    sales_email: string;
+    general_email: string;
+    phone: string;
+    toll_free: string;
+  };
+  address: {
+    street: string;
+    suite: string;
+    city: string;
+    state: string;
+    postal_code: string;
+    country: string;
+    formatted?: string;
+  };
+  business_hours: {
+    timezone: string;
+    schedule?: {
+      monday: { enabled: boolean; start: string; end: string };
+      tuesday: { enabled: boolean; start: string; end: string };
+      wednesday: { enabled: boolean; start: string; end: string };
+      thursday: { enabled: boolean; start: string; end: string };
+      friday: { enabled: boolean; start: string; end: string };
+      saturday: { enabled: boolean; start: string; end: string };
+      sunday: { enabled: boolean; start: string; end: string };
+    };
+    formatted: {
+      weekdays: string;
+      weekends: string;
+    };
+  };
+  support?: {
+    live_chat: {
+      available: boolean;
+      hours: string;
+      description: string;
+    };
+    phone_support: {
+      available: boolean;
+      hours: string;
+      description: string;
+    };
+    email_support: {
+      available: boolean;
+      hours: string;
+      response_time: string;
+      description: string;
+    };
+  };
+  legal: {
+    privacy_email: string;
+    legal_email: string;
+    dpo_email: string;
+    registered_year: string;
+    tax_id?: string;
+    registration_state: string;
+  };
+  social: {
+    website: string;
+    twitter?: string;
+    linkedin?: string;
+    github?: string;
+    blog?: string;
+    status_page?: string;
+    help_center?: string;
+    community?: string;
+  };
+  about: {
+    founded: string;
+    mission: string;
+    vision: string;
+    headquarters: string;
+    team_size: string;
+    funding_stage: string;
+  };
+  emergency?: {
+    phone: string;
+    email: string;
+    description: string;
+  };
+}
+
 export interface PaginationInfo {
   page: number;
   limit: number;
@@ -540,6 +628,31 @@ export const adminAPI = {
       body: JSON.stringify({
         action: "reactivate",
       }),
+    });
+
+    return response;
+  },
+
+  // Company Information Management API
+  getCompanyInfo: async () => {
+    const response = await apiRequest<{
+      company_info: CompanyInfo;
+      created_at?: string;
+      updated_at?: string;
+      updated_by?: string;
+    }>("/admin/company-info");
+
+    return response;
+  },
+
+  updateCompanyInfo: async (companyInfo: CompanyInfo) => {
+    const response = await apiRequest<{
+      company_info: CompanyInfo;
+      updated_at: string;
+      updated_by: string;
+    }>("/admin/company-info", {
+      method: "PUT",
+      body: JSON.stringify(companyInfo),
     });
 
     return response;
