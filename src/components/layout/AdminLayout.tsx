@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { adminAPI } from "@/lib/admin-api";
+import { useAdminStatusMonitor } from "@/hooks/useAdminStatusMonitor";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -115,6 +116,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
     fetchUserProfile();
   }, [isSignedIn]);
+
+  // Admin status monitoring - check for admin user/organization deactivation
+  useAdminStatusMonitor({
+    checkInterval: 60 * 1000, // Check every 60 seconds
+    enabled: true, // Always enabled for admin panel
+  });
 
   // Close user menu when clicking outside
   useEffect(() => {

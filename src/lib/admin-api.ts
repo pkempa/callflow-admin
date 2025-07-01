@@ -1059,6 +1059,7 @@ export const adminAPI = {
         plan: string;
         team_size: number;
         industry: string;
+        is_active?: boolean;
       };
     }>("/auth/profile", {
       method: "PUT",
