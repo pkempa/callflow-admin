@@ -102,6 +102,9 @@ export default function OrganizationDetailPage() {
   const [usersLoaded, setUsersLoaded] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
 
+  // Add state for dynamic user count
+  const [dynamicUserCount, setDynamicUserCount] = useState<number | null>(null);
+
   const loadActivitiesOnDemand = useCallback(() => {
     if (!organization || activitiesLoading) return;
 
@@ -133,6 +136,7 @@ export default function OrganizationDetailPage() {
     setUsersLoaded(true);
 
     let usersLoadedSuccessfully = false;
+    let loadedUsers: User[] = [];
 
     try {
       // Try the new admin users API first
@@ -142,7 +146,8 @@ export default function OrganizationDetailPage() {
       });
 
       if (usersResponse.success && usersResponse.data?.users) {
-        setUsersProtected(usersResponse.data.users);
+        loadedUsers = usersResponse.data.users;
+        setUsersProtected(loadedUsers);
         usersLoadedSuccessfully = true;
       }
     } catch {
@@ -155,7 +160,8 @@ export default function OrganizationDetailPage() {
         const legacyUsersResponse = await adminAPI.getUsers(organization.id);
 
         if (legacyUsersResponse.success && legacyUsersResponse.data?.users) {
-          setUsersProtected(legacyUsersResponse.data.users);
+          loadedUsers = legacyUsersResponse.data.users;
+          setUsersProtected(loadedUsers);
           usersLoadedSuccessfully = true;
         }
       } catch {
@@ -166,10 +172,40 @@ export default function OrganizationDetailPage() {
     if (!usersLoadedSuccessfully) {
       setUsersProtected([]);
       setUsersLoaded(false); // Allow retry
+    } else {
+      // Update dynamic user count with actual loaded count
+      setDynamicUserCount(loadedUsers.length);
     }
 
     setUsersLoading(false);
   }, [organization, usersLoading]);
+
+  // Function to load just the user count (lightweight)
+  const loadUserCount = useCallback(async () => {
+    if (!organization || dynamicUserCount !== null) return;
+
+    try {
+      // Use the admin users API to get user count
+      const usersResponse = await adminAPI.getAdminUsers({
+        organization_id: organization.id,
+        limit: 1, // We only need the count, so limit to 1 for efficiency
+      });
+
+      if (usersResponse.success && usersResponse.data?.pagination) {
+        // Use the total count from pagination
+        setDynamicUserCount(usersResponse.data.pagination.total);
+      } else {
+        // Fallback: try legacy API
+        const legacyResponse = await adminAPI.getUsers(organization.id);
+        if (legacyResponse.success && legacyResponse.data?.users) {
+          setDynamicUserCount(legacyResponse.data.users.length);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load user count:", error);
+      // Don't set an error state for this, just keep the stored count
+    }
+  }, [organization, dynamicUserCount]);
 
   // Handle tab changes and trigger on-demand loading
   const handleTabChange = (newTab: string) => {
@@ -189,7 +225,11 @@ export default function OrganizationDetailPage() {
       } else if (activeTab === "users") {
         loadUsersOnDemand();
       }
+
+      // Always load user count for accurate display
+      loadUserCount();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, organization, loading]);
 
   // Reset and refetch function for manual refresh
@@ -496,7 +536,11 @@ export default function OrganizationDetailPage() {
             </TabsTrigger>
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Users ({organization?.user_count || 0})
+              Users (
+              {dynamicUserCount !== null
+                ? dynamicUserCount
+                : organization?.user_count || 0}
+              )
               {usersLoading && (
                 <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
               )}
@@ -563,7 +607,9 @@ export default function OrganizationDetailPage() {
                   <div>
                     <Label className="text-xs text-gray-500">Users</Label>
                     <p className="font-medium">
-                      {organization?.user_count || 0}
+                      {dynamicUserCount !== null
+                        ? dynamicUserCount
+                        : organization?.user_count || 0}
                     </p>
                   </div>
                   <div>
@@ -668,9 +714,16 @@ export default function OrganizationDetailPage() {
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Users className="h-5 w-5" />
-                    Users ({organization?.user_count || 0})
+                    Users (
+                    {dynamicUserCount !== null
+                      ? dynamicUserCount
+                      : organization?.user_count || 0}
+                    )
                     {users.length > 0 &&
-                      users.length !== (organization?.user_count || 0) && (
+                      users.length !==
+                        (dynamicUserCount !== null
+                          ? dynamicUserCount
+                          : organization?.user_count || 0) && (
                         <span className="text-sm text-gray-500">
                           ({users.length} loaded)
                         </span>
@@ -727,10 +780,14 @@ export default function OrganizationDetailPage() {
                     <p className="text-gray-500 mb-2">
                       {usersLoaded
                         ? `No users loaded. This organization has ${
-                            organization?.user_count || 0
+                            dynamicUserCount !== null
+                              ? dynamicUserCount
+                              : organization?.user_count || 0
                           } total users. Try refreshing to load user details.`
                         : `This organization has ${
-                            organization?.user_count || 0
+                            dynamicUserCount !== null
+                              ? dynamicUserCount
+                              : organization?.user_count || 0
                           } users. Click the button below to load user details.`}
                     </p>
                     {!usersLoaded && (

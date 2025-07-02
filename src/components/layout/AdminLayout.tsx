@@ -17,6 +17,8 @@ import {
   Sliders,
   ListOrdered,
   MessageSquare,
+  Bell,
+  Search,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { adminAPI } from "@/lib/admin-api";
@@ -52,36 +54,75 @@ const navigationSections = [
   {
     name: "Overview",
     items: [
-      { name: "Dashboard", href: "/", icon: LayoutDashboard },
-      { name: "Analytics", href: "/analytics", icon: BarChart3 },
+      {
+        name: "Dashboard",
+        href: "/",
+        icon: LayoutDashboard,
+        description: "System overview and metrics",
+      },
+      {
+        name: "Analytics",
+        href: "/analytics",
+        icon: BarChart3,
+        description: "Performance insights",
+      },
     ],
   },
   {
     name: "User Management",
     items: [
-      { name: "Organizations", href: "/organizations", icon: Building },
-      { name: "Platform Users", href: "/platform-users", icon: Shield },
+      {
+        name: "Organizations",
+        href: "/organizations",
+        icon: Building,
+        description: "Manage customer organizations",
+      },
+      {
+        name: "Platform Users",
+        href: "/platform-users",
+        icon: Shield,
+        description: "Admin and platform users",
+      },
     ],
   },
   {
     name: "Business",
-    items: [{ name: "Plans", href: "/plans", icon: CreditCard }],
+    items: [
+      {
+        name: "Plans",
+        href: "/plans",
+        icon: CreditCard,
+        description: "Subscription plans and pricing",
+      },
+    ],
   },
   {
     name: "System & Tools",
     items: [
-      { name: "System Logs", href: "/logs", icon: FileText },
+      {
+        name: "System Logs",
+        href: "/logs",
+        icon: FileText,
+        description: "Application logs and errors",
+      },
       {
         name: "Dropdown Options",
         href: "/dropdown-options",
         icon: ListOrdered,
+        description: "Manage form dropdown options",
       },
       {
         name: "Support Tickets",
         href: "/support-tickets",
         icon: MessageSquare,
+        description: "Customer support requests",
       },
-      { name: "Settings", href: "/settings", icon: Sliders },
+      {
+        name: "Settings",
+        href: "/settings",
+        icon: Sliders,
+        description: "System configuration",
+      },
     ],
   },
 ];
@@ -170,15 +211,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       ? `${displayUser.first_name} ${displayUser.last_name}`
       : displayUser.first_name || user?.firstName || "Admin";
 
-  // Note: Removed getPageTitle function as it was redundant with page titles
-
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div
-            className="fixed inset-0 bg-gray-600 bg-opacity-75"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setSidebarOpen(false)}
           />
         </div>
@@ -186,33 +225,40 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-xl border-r border-slate-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-900">CallFlowHQ Admin</h1>
+        {/* Sidebar Header */}
+        <div className="flex items-center justify-between h-16 px-6 border-b border-slate-200 bg-gradient-to-r from-slate-800 to-slate-700">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-lg flex items-center justify-center">
+              <LayoutDashboard className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">CallFlowHQ</h1>
+              <p className="text-xs text-slate-300">Admin Panel</p>
+            </div>
+          </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+            className="lg:hidden p-1.5 rounded-md text-slate-400 hover:text-slate-300 hover:bg-slate-600 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <nav className="mt-6">
-          <div className="px-3">
-            {navigationSections.map((section, sectionIndex) => (
-              <div
-                key={section.name}
-                className={sectionIndex > 0 ? "mt-6" : ""}
-              >
-                {/* Section Header */}
-                <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                  {section.name}
-                </h3>
+        {/* Navigation */}
+        <nav className="flex-1 px-4 py-6 space-y-8 overflow-y-auto">
+          {navigationSections.map((section, sectionIndex) => (
+            <div key={section.name} className="space-y-3">
+              {/* Section Header */}
+              <h3 className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                {section.name}
+              </h3>
 
-                {/* Section Items */}
+              {/* Section Items */}
+              <div className="space-y-1">
                 {section.items.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname === item.href;
@@ -224,134 +270,191 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                         router.push(item.href);
                         setSidebarOpen(false);
                       }}
-                      className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md mb-1 flex items-center transition-colors ${
+                      className={`group w-full text-left px-3 py-3 rounded-lg transition-all duration-200 flex items-center space-x-3 ${
                         isActive
-                          ? "text-blue-700 bg-blue-100"
-                          : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                          ? "bg-gradient-to-r from-blue-50 to-cyan-50 text-blue-700 shadow-sm border border-blue-200"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:shadow-sm"
                       }`}
                     >
-                      <Icon className="mr-3 h-5 w-5" />
-                      {item.name}
+                      <div
+                        className={`p-2 rounded-md ${
+                          isActive
+                            ? "bg-blue-100 text-blue-600"
+                            : "bg-slate-100 text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-600"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium">{item.name}</p>
+                        <p className="text-xs text-slate-500 truncate">
+                          {item.description}
+                        </p>
+                      </div>
                     </button>
                   );
                 })}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </nav>
+
+        {/* Sidebar Footer */}
+        <div className="p-4 border-t border-slate-200 bg-slate-50">
+          <div className="flex items-center space-x-3 p-3 rounded-lg bg-white shadow-sm">
+            <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-400 rounded-full flex items-center justify-center">
+              <Shield className="h-4 w-4 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-slate-900">
+                System Status
+              </p>
+              <p className="text-xs text-green-600">All systems operational</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Main content */}
-      <div className="lg:ml-64">
+      <div className="lg:ml-72">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200">
+        <header className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-30">
           <div className="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div className="flex items-center">
+            <div className="flex items-center space-x-4">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+                className="lg:hidden p-2 rounded-md text-slate-400 hover:text-slate-500 hover:bg-slate-100 transition-colors"
               >
                 <Menu className="h-5 w-5" />
               </button>
-              {/* Page title is shown in the page content, no need to duplicate here */}
+
+              {/* Search Bar */}
+              <div className="hidden md:flex items-center">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search admin panel..."
+                    className="pl-10 pr-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Custom User Menu */}
-            <div className="relative" ref={userMenuRef}>
-              <button
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                <div className="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                  {userInitials}
-                </div>
-                <div className="hidden sm:block text-left">
-                  <div className="text-sm font-medium text-gray-900">
-                    {displayName}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {backendUser?.role
-                      ? backendUser.role === "admin"
-                        ? "Administrator"
-                        : backendUser.role === "platform_admin"
-                        ? "Platform Administrator"
-                        : backendUser.role === "platform_member"
-                        ? "Platform Member"
-                        : "Member"
-                      : "Administrator"}
-                  </div>
-                </div>
-                <ChevronDown
-                  className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
-                    userMenuOpen ? "rotate-180" : ""
-                  }`}
-                />
+            <div className="flex items-center space-x-4">
+              {/* Notifications */}
+              <button className="p-2 rounded-lg text-slate-400 hover:text-slate-500 hover:bg-slate-100 transition-colors relative">
+                <Bell className="h-5 w-5" />
+                <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                  3
+                </span>
               </button>
 
-              {/* Dropdown Menu */}
-              {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                  <div className="px-4 py-3 border-b border-gray-100">
-                    <div className="flex items-center space-x-3">
-                      <div className="h-10 w-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
-                        {userInitials}
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {displayName}
+              {/* User Menu */}
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  <div className="h-8 w-8 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                    {userInitials}
+                  </div>
+                  <div className="hidden sm:block text-left">
+                    <div className="text-sm font-medium text-slate-900">
+                      {displayName}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {backendUser?.role
+                        ? backendUser.role === "admin"
+                          ? "Administrator"
+                          : backendUser.role === "platform_admin"
+                          ? "Platform Administrator"
+                          : backendUser.role === "platform_member"
+                          ? "Platform Member"
+                          : "Member"
+                        : "Administrator"}
+                    </div>
+                  </div>
+                  <ChevronDown
+                    className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${
+                      userMenuOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {/* Dropdown Menu */}
+                {userMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-50 animate-scaleIn">
+                    <div className="px-4 py-3 border-b border-slate-100">
+                      <div className="flex items-center space-x-3">
+                        <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full flex items-center justify-center text-white font-semibold">
+                          {userInitials}
                         </div>
-                        <div className="text-sm text-gray-500">
-                          {displayUser.email}
-                        </div>
-                        <div className="flex items-center text-xs text-green-600 mt-1">
-                          <Shield className="h-3 w-3 mr-1" />
-                          {backendUser?.role
-                            ? backendUser.role === "admin"
-                              ? "Administrator"
-                              : backendUser.role === "platform_admin"
-                              ? "Platform Administrator"
-                              : backendUser.role === "platform_member"
-                              ? "Platform Member"
-                              : "Member"
-                            : "Administrator"}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-slate-900">
+                            {displayName}
+                          </div>
+                          <div className="text-sm text-slate-500 truncate">
+                            {displayUser.email}
+                          </div>
+                          <div className="flex items-center mt-1">
+                            <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
+                            <span className="text-xs text-green-600 font-medium">
+                              {backendUser?.role
+                                ? backendUser.role === "admin"
+                                  ? "Administrator"
+                                  : backendUser.role === "platform_admin"
+                                  ? "Platform Administrator"
+                                  : backendUser.role === "platform_member"
+                                  ? "Platform Member"
+                                  : "Member"
+                                : "Administrator"}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
+
+                    <div className="py-2">
+                      <button
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          router.push("/profile");
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center space-x-3 transition-colors"
+                      >
+                        <div className="p-1.5 bg-slate-100 rounded-md">
+                          <User className="h-4 w-4 text-slate-600" />
+                        </div>
+                        <span>My Profile</span>
+                      </button>
+
+                      <div className="border-t border-slate-100 my-2"></div>
+
+                      <button
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          handleSignOut();
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-3 transition-colors"
+                      >
+                        <div className="p-1.5 bg-red-100 rounded-md">
+                          <LogOut className="h-4 w-4 text-red-600" />
+                        </div>
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
                   </div>
-
-                  <div className="py-2">
-                    <button
-                      onClick={() => {
-                        setUserMenuOpen(false);
-                        router.push("/profile");
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                    >
-                      <User className="h-4 w-4 mr-3 text-gray-400" />
-                      My Profile
-                    </button>
-
-                    <div className="border-t border-gray-100 my-2"></div>
-
-                    <button
-                      onClick={() => {
-                        setUserMenuOpen(false);
-                        handleSignOut();
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
-                    >
-                      <LogOut className="h-4 w-4 mr-3 text-red-400" />
-                      Sign Out
-                    </button>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="p-6 lg:p-8">
+          <div className="animate-fadeIn">{children}</div>
+        </main>
       </div>
     </div>
   );

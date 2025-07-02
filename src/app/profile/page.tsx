@@ -16,6 +16,10 @@ import {
   X,
   Shield,
 } from "lucide-react";
+import {
+  JobTitleSelect,
+  DepartmentSelect,
+} from "@/components/ui/DropdownSelect";
 
 interface BackendUserProfile {
   id: string;
@@ -397,13 +401,12 @@ export default function ProfilePage() {
                       Job Title
                     </label>
                     {isEditing ? (
-                      <input
-                        type="text"
+                      <JobTitleSelect
                         value={editForm.jobTitle}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, jobTitle: e.target.value })
+                        onChange={(value) =>
+                          setEditForm({ ...editForm, jobTitle: value })
                         }
-                        placeholder="e.g., System Administrator"
+                        placeholder="Select job title"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                       />
                     ) : (
@@ -418,16 +421,15 @@ export default function ProfilePage() {
                       Department
                     </label>
                     {isEditing ? (
-                      <input
-                        type="text"
+                      <DepartmentSelect
                         value={editForm.department}
-                        onChange={(e) =>
+                        onChange={(value) =>
                           setEditForm({
                             ...editForm,
-                            department: e.target.value,
+                            department: value,
                           })
                         }
-                        placeholder="e.g., IT Operations"
+                        placeholder="Select department"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                       />
                     ) : (

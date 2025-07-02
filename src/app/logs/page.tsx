@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { ChevronLeft, Home } from "lucide-react";
 
 interface LogEntry {
   timestamp: string;
@@ -53,9 +55,11 @@ interface LogSearchResponse {
 }
 
 export default function LogViewerPage() {
+  const router = useRouter();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
   const [pagination, setPagination] = useState({
@@ -68,137 +72,6 @@ export default function LogViewerPage() {
   });
 
   const refreshInterval = useRef<NodeJS.Timeout | null>(null);
-
-  // Mock data function for when API is not available
-  const getMockLogData = (filters: LogFilters): LogSearchResponse => {
-    const now = new Date();
-    const mockLogs: LogEntry[] = [
-      {
-        timestamp: new Date(now.getTime() - 5 * 60 * 1000).toISOString(),
-        level: "info",
-        message: "User logged in successfully",
-        log_source: "frontend",
-        context: {
-          userId: "user_123",
-          page: "/dashboard",
-          correlationId: "req_123456",
-        },
-        metadata: {
-          user_action: true,
-          action: "LOGIN",
-          duration_ms: 150,
-        },
-      },
-      {
-        timestamp: new Date(now.getTime() - 10 * 60 * 1000).toISOString(),
-        level: "error",
-        message: "API call failed",
-        log_source: "frontend",
-        context: {
-          userId: "user_456",
-          page: "/phone-numbers",
-          component: "PhoneNumbersList",
-        },
-        metadata: {
-          api_call: true,
-          endpoint: "/phone-numbers",
-          status_code: 500,
-          duration_ms: 5000,
-        },
-        error: {
-          name: "NetworkError",
-          message: "Failed to fetch phone numbers",
-          stack: "Error: Failed to fetch\n    at fetchPhoneNumbers...",
-        },
-      },
-      {
-        timestamp: new Date(now.getTime() - 15 * 60 * 1000).toISOString(),
-        level: "warn",
-        message: "SECURITY EVENT: Multiple failed login attempts",
-        log_source: "backend",
-        context: {
-          userId: "user_789",
-          correlationId: "req_789123",
-        },
-        metadata: {
-          security_event: true,
-          event: "FAILED_LOGIN_ATTEMPTS",
-          severity: "medium",
-          attempt_count: 3,
-        },
-      },
-      {
-        timestamp: new Date(now.getTime() - 20 * 60 * 1000).toISOString(),
-        level: "info",
-        message: "PHONE_NUMBER_PURCHASED",
-        log_source: "backend",
-        context: {
-          userId: "user_123",
-          organizationId: "org_456",
-        },
-        metadata: {
-          business_event: true,
-          phone_number: "+1234567890",
-          cost: 1.0,
-          provider: "twilio",
-        },
-      },
-      {
-        timestamp: new Date(now.getTime() - 25 * 60 * 1000).toISOString(),
-        level: "debug",
-        message: "Database query executed",
-        log_source: "backend",
-        metadata: {
-          performance_metric: true,
-          query_type: "SELECT",
-          table: "users",
-          duration_ms: 15,
-        },
-      },
-    ];
-
-    // Apply filters
-    let filteredLogs = mockLogs;
-
-    if (filters.log_source !== "all") {
-      filteredLogs = filteredLogs.filter(
-        (log) => log.log_source === filters.log_source
-      );
-    }
-
-    if (filters.level) {
-      filteredLogs = filteredLogs.filter((log) => log.level === filters.level);
-    }
-
-    if (filters.search_text) {
-      const searchLower = filters.search_text.toLowerCase();
-      filteredLogs = filteredLogs.filter(
-        (log) =>
-          log.message.toLowerCase().includes(searchLower) ||
-          JSON.stringify(log.metadata || {})
-            .toLowerCase()
-            .includes(searchLower)
-      );
-    }
-
-    return {
-      logs: filteredLogs,
-      pagination: {
-        current_page: 1,
-        total_pages: 1,
-        total_items: filteredLogs.length,
-        per_page: 50,
-        has_next: false,
-        has_previous: false,
-      },
-      filters: {
-        log_source: filters.log_source,
-        level: filters.level,
-        start_time: filters.start_time,
-        end_time: filters.end_time,
-      },
-    };
-  };
 
   const [filters, setFilters] = useState<LogFilters>({
     log_source: "all",
@@ -219,6 +92,7 @@ export default function LogViewerPage() {
           setLoading(true);
         }
         setError(null);
+        setSuccess(null);
 
         // Build query parameters
         const params = new URLSearchParams();
@@ -241,25 +115,23 @@ export default function LogViewerPage() {
         params.append("limit", "50");
 
         // Make API call to admin logs endpoint
-        let data: LogSearchResponse;
+        const response = await fetch(`/api/admin/logs?${params}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
 
-        try {
-          const response = await fetch(`/api/admin/logs?${params}`, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          });
-
-          if (!response.ok) {
-            // If API fails, use mock data for now
-            data = getMockLogData(filters);
-          } else {
-            data = await response.json();
-          }
-        } catch {
-          data = getMockLogData(filters);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.error ||
+              errorData.details ||
+              `API Error: ${response.status} ${response.statusText}`
+          );
         }
+
+        const data: LogSearchResponse = await response.json();
 
         setLogs(data.logs || []);
         setPagination(
@@ -272,10 +144,16 @@ export default function LogViewerPage() {
             has_previous: false,
           }
         );
+
+        // Show success message
+        const logCount = data.logs?.length || 0;
+        setSuccess(`✅ Successfully loaded ${logCount} logs`);
+        setTimeout(() => setSuccess(null), 3000); // Clear after 3 seconds
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to fetch logs";
         setError(errorMessage);
+        setSuccess(null); // Clear success on error
       } finally {
         if (showLoading) {
           setLoading(false);
@@ -417,6 +295,30 @@ export default function LogViewerPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
+        {/* Breadcrumb Navigation */}
+        <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
+          <button
+            onClick={() => router.push("/")}
+            className="flex items-center hover:text-gray-700 transition-colors"
+          >
+            <Home className="w-4 h-4 mr-1" />
+            Dashboard
+          </button>
+          <span>/</span>
+          <span className="text-gray-900 font-medium">System Logs</span>
+        </nav>
+
+        {/* Back Button */}
+        <div className="flex items-center mb-4">
+          <button
+            onClick={() => router.push("/")}
+            className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors mr-4"
+          >
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            Back to Dashboard
+          </button>
+        </div>
+
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">System Logs</h1>
@@ -614,14 +516,48 @@ export default function LogViewerPage() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-          <div className="flex">
-            <div className="text-red-400">⚠️</div>
-            <div className="ml-3">
+          <div className="flex items-start">
+            <div className="text-red-400 mt-0.5">⚠️</div>
+            <div className="ml-3 flex-1">
               <h3 className="text-sm font-medium text-red-800">
                 Error Loading Logs
               </h3>
               <p className="text-sm text-red-700 mt-1">{error}</p>
+              <div className="mt-3 flex space-x-3">
+                <button
+                  onClick={() => fetchLogs()}
+                  className="text-sm bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded transition-colors"
+                >
+                  Try Again
+                </button>
+                <button
+                  onClick={() => {
+                    console.log("🔍 Debug info:", {
+                      apiUrl: process.env.NEXT_PUBLIC_API_URL,
+                      filters,
+                      timestamp: new Date().toISOString(),
+                    });
+                    // Test debug endpoint
+                    fetch("/api/admin/logs?debug=true")
+                      .then((r) => r.json())
+                      .then((data) => console.log("🔍 Debug response:", data))
+                      .catch((e) => console.error("🔍 Debug error:", e));
+                  }}
+                  className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1 rounded transition-colors"
+                >
+                  Debug Info
+                </button>
+              </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-md p-4 mb-6">
+          <div className="flex items-center">
+            <div className="text-green-400 mr-3">✅</div>
+            <p className="text-sm text-green-700">{success}</p>
           </div>
         </div>
       )}
@@ -630,9 +566,39 @@ export default function LogViewerPage() {
       <div className="space-y-2">
         {logs.length === 0 ? (
           <div className="text-center py-12 bg-gray-50 rounded-lg">
-            <p className="text-gray-500">
-              No logs found for the selected criteria
-            </p>
+            <div className="mb-4">
+              <div className="w-16 h-16 mx-auto mb-4 text-gray-400">📋</div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No logs found
+              </h3>
+              <p className="text-gray-500 mb-4">
+                No logs match your current filter criteria.
+              </p>
+              <div className="text-sm text-gray-400 space-y-1">
+                <p>• Try expanding the time range</p>
+                <p>• Clear some filters</p>
+                <p>• Check if the backend is running</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setFilters({
+                  log_source: "all",
+                  level: "",
+                  start_time: new Date(Date.now() - 24 * 60 * 60 * 1000)
+                    .toISOString()
+                    .slice(0, 16),
+                  end_time: new Date().toISOString().slice(0, 16),
+                  user_id: "",
+                  organization_id: "",
+                  search_text: "",
+                });
+                fetchLogs();
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Reset Filters
+            </button>
           </div>
         ) : (
           logs.map((logEntry, index) => {

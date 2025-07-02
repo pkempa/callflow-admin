@@ -472,7 +472,20 @@ async function apiRequest<T>(
     }
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      // Try to parse error response for better error messages
+      try {
+        const errorData: ApiResponse<T> = await response.json();
+        return {
+          success: false,
+          error: errorData.error || `HTTP error! status: ${response.status}`,
+        };
+      } catch {
+        // If JSON parsing fails, return generic error
+        return {
+          success: false,
+          error: `HTTP error! status: ${response.status}`,
+        };
+      }
     }
 
     const data: ApiResponse<T> = await response.json();
@@ -495,6 +508,7 @@ export const adminAPI = {
       limit?: number;
       search?: string;
       plan?: string;
+      include_user_counts?: boolean;
     } = {}
   ) => {
     const queryParams = new URLSearchParams();
@@ -502,6 +516,8 @@ export const adminAPI = {
     if (params.limit) queryParams.append("limit", params.limit.toString());
     if (params.search) queryParams.append("search", params.search);
     if (params.plan) queryParams.append("plan", params.plan);
+    if (params.include_user_counts)
+      queryParams.append("include_user_counts", "true");
 
     const response = await apiRequest<{
       organizations: Organization[];
@@ -563,6 +579,8 @@ export const adminAPI = {
       team_sizes: DropdownOption[];
       industries: DropdownOption[];
       use_cases: DropdownOption[];
+      job_titles: DropdownOption[];
+      departments: DropdownOption[];
     }>("/admin/dropdown-options");
 
     return response;
@@ -879,7 +897,7 @@ export const adminAPI = {
     phone_number?: string;
     job_title?: string;
     department?: string;
-    send_invitation?: boolean;
+
     team_size?: string;
     industry?: string;
     plan?: string;
@@ -1001,6 +1019,40 @@ export const adminAPI = {
       user_id: string;
     }>(`/admin/platform-users/${userId}`, {
       method: "DELETE",
+    });
+
+    return response;
+  },
+
+  resendInvitation: async (
+    userId: string,
+    options?: {
+      send_email?: boolean;
+      custom_message?: string;
+    }
+  ) => {
+    const response = await apiRequest<{
+      message: string;
+      user: {
+        id: string;
+        email: string;
+        first_name: string;
+        last_name: string;
+        status: string;
+        role: string;
+      };
+      organization: {
+        id: string;
+        name: string;
+      };
+      invitation_result: {
+        email_sent: boolean;
+        email_error?: string;
+        custom_message_included: boolean;
+      };
+    }>(`/admin/platform-users/${userId}/resend-invitation`, {
+      method: "POST",
+      body: JSON.stringify(options || {}),
     });
 
     return response;

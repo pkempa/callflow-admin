@@ -22,7 +22,7 @@ export const Select: React.FC<SelectProps> = ({
             onValueChange,
             isOpen,
             setIsOpen,
-          } as Record<string, unknown>);
+          } as any);
         }
         return child;
       })}
@@ -41,6 +41,7 @@ interface SelectTriggerProps {
 export const SelectTrigger: React.FC<SelectTriggerProps> = ({
   children,
   className = "",
+  value,
   isOpen,
   setIsOpen,
 }) => (
@@ -49,7 +50,12 @@ export const SelectTrigger: React.FC<SelectTriggerProps> = ({
     onClick={() => setIsOpen?.(!isOpen)}
     className={`flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
   >
-    {children}
+    {React.Children.map(children, (child) => {
+      if (React.isValidElement(child) && child.type === SelectValue) {
+        return React.cloneElement(child, { value } as any);
+      }
+      return child;
+    })}
     <svg
       className="h-4 w-4 opacity-50"
       fill="none"
@@ -81,6 +87,7 @@ interface SelectContentProps {
   className?: string;
   isOpen?: boolean;
   setIsOpen?: (open: boolean) => void;
+  onValueChange?: (value: string) => void;
 }
 
 export const SelectContent: React.FC<SelectContentProps> = ({
@@ -88,6 +95,7 @@ export const SelectContent: React.FC<SelectContentProps> = ({
   className = "",
   isOpen,
   setIsOpen,
+  onValueChange,
 }) => {
   if (!isOpen) return null;
 
@@ -101,7 +109,8 @@ export const SelectContent: React.FC<SelectContentProps> = ({
           if (React.isValidElement(child)) {
             return React.cloneElement(child, {
               setIsOpen,
-            } as Record<string, unknown>);
+              onValueChange,
+            } as any);
           }
           return child;
         })}

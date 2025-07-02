@@ -19,7 +19,12 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Plus, Edit2, Trash2, Save } from "lucide-react";
 
-type OptionType = "team_sizes" | "industries" | "use_cases";
+type OptionType =
+  | "team_sizes"
+  | "industries"
+  | "use_cases"
+  | "job_titles"
+  | "departments";
 
 interface EditingOption {
   type: OptionType;
@@ -35,16 +40,20 @@ export default function DropdownOptionsPage() {
     team_sizes: DropdownOption[];
     industries: DropdownOption[];
     use_cases: DropdownOption[];
+    job_titles: DropdownOption[];
+    departments: DropdownOption[];
   }>({
     team_sizes: [],
     industries: [],
     use_cases: [],
+    job_titles: [],
+    departments: [],
   });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<OptionType>("team_sizes");
+  const [activeTab, setActiveTab] = useState<OptionType>("job_titles");
 
   // Edit dialog state
   const [editDialog, setEditDialog] = useState(false);
@@ -203,6 +212,10 @@ export default function DropdownOptionsPage() {
         return "Industries";
       case "use_cases":
         return "Use Cases";
+      case "job_titles":
+        return "Job Titles";
+      case "departments":
+        return "Departments";
       default:
         return type;
     }
@@ -216,6 +229,10 @@ export default function DropdownOptionsPage() {
         return "Industry categories for business classification";
       case "use_cases":
         return "Primary use case options for business onboarding";
+      case "job_titles":
+        return "Standardized job title options for user profiles";
+      case "departments":
+        return "Department options for user and organization management";
       default:
         return "";
     }
@@ -309,99 +326,107 @@ export default function DropdownOptionsPage() {
             onValueChange={(value) => setActiveTab(value as OptionType)}
             className="space-y-6"
           >
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="job_titles">Job Titles</TabsTrigger>
+              <TabsTrigger value="departments">Departments</TabsTrigger>
               <TabsTrigger value="team_sizes">Team Sizes</TabsTrigger>
               <TabsTrigger value="industries">Industries</TabsTrigger>
               <TabsTrigger value="use_cases">Use Cases</TabsTrigger>
             </TabsList>
 
-            {(["team_sizes", "industries", "use_cases"] as OptionType[]).map(
-              (type) => (
-                <TabsContent key={type} value={type}>
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                      <div>
-                        <CardTitle>{getTypeTitle(type)}</CardTitle>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {getTypeDescription(type)}
+            {(
+              [
+                "job_titles",
+                "departments",
+                "team_sizes",
+                "industries",
+                "use_cases",
+              ] as OptionType[]
+            ).map((type) => (
+              <TabsContent key={type} value={type}>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>{getTypeTitle(type)}</CardTitle>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {getTypeDescription(type)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleAdd(type)}
+                      className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      disabled={saving}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Option
+                    </button>
+                  </CardHeader>
+                  <CardContent>
+                    {options[type].length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <p className="mb-4">
+                          No options configured for{" "}
+                          {getTypeTitle(type).toLowerCase()}.
                         </p>
-                      </div>
-                      <button
-                        onClick={() => handleAdd(type)}
-                        className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                        disabled={saving}
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Option
-                      </button>
-                    </CardHeader>
-                    <CardContent>
-                      {options[type].length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
-                          <p className="mb-4">
-                            No options configured for{" "}
-                            {getTypeTitle(type).toLowerCase()}.
-                          </p>
-                          <div className="space-y-2">
-                            <button
-                              onClick={() => handleAdd(type)}
-                              className="block mx-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                            >
-                              Add Option Manually
-                            </button>
-                            <p className="text-xs text-gray-400">
-                              Or use the seeding script to populate default
-                              options
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
                         <div className="space-y-2">
-                          {options[type].map((option, index) => (
-                            <div
-                              key={option.id || index}
-                              className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
-                            >
-                              <div className="flex-1">
-                                <div className="flex items-center space-x-4">
-                                  <Badge variant="outline" className="text-xs">
-                                    Order: {option.sort_order}
-                                  </Badge>
-                                  <span className="font-medium">
-                                    {option.label}
+                          <button
+                            onClick={() => handleAdd(type)}
+                            className="block mx-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          >
+                            Add Option Manually
+                          </button>
+                          <p className="text-xs text-gray-400">
+                            Or use the seeding script to populate default
+                            options
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {options[type].map((option, index) => (
+                          <div
+                            key={option.id || index}
+                            className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-4">
+                                <Badge variant="outline" className="text-xs">
+                                  Order: {option.sort_order}
+                                </Badge>
+                                <span className="font-medium">
+                                  {option.label}
+                                </span>
+                                {option.value !== option.label && (
+                                  <span className="text-sm text-gray-500">
+                                    ({option.value})
                                   </span>
-                                  {option.value !== option.label && (
-                                    <span className="text-sm text-gray-500">
-                                      ({option.value})
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <button
-                                  onClick={() => handleEdit(type, option)}
-                                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                  disabled={saving}
-                                >
-                                  <Edit2 className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(type, option)}
-                                  className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                  disabled={saving}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                )}
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              )
-            )}
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => handleEdit(type, option)}
+                                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                disabled={saving}
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(type, option)}
+                                className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                disabled={saving}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            ))}
           </Tabs>
         )}
 

@@ -44,6 +44,7 @@ export default function OrganizationsPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [includeUserCounts, setIncludeUserCounts] = useState(true);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isUpdating, setIsUpdating] = useState(false);
   const [orgList, setOrgList] = useState<Organization[]>([]);
@@ -97,6 +98,7 @@ export default function OrganizationsPage() {
         limit: pagination?.limit || 20,
         ...(searchTerm && { search: searchTerm }),
         ...(filterStatus !== "all" && { plan: filterStatus }),
+        include_user_counts: includeUserCounts, // Request accurate user counts
       };
 
       const response = await adminAPI.getOrganizations(params);
@@ -123,6 +125,7 @@ export default function OrganizationsPage() {
     pagination?.limit,
     searchTerm,
     filterStatus,
+    includeUserCounts,
     orgList,
     setOrgListProtected,
   ]);
@@ -147,7 +150,7 @@ export default function OrganizationsPage() {
     if (hasAttemptedFetch) {
       resetAndFetch();
     }
-  }, [filterStatus, hasAttemptedFetch, resetAndFetch]);
+  }, [filterStatus, includeUserCounts, hasAttemptedFetch, resetAndFetch]);
 
   // Note: Using local state management with fetchUsers() instead of useQuery
 
@@ -422,6 +425,21 @@ export default function OrganizationsPage() {
                   <option value="inactive">Deactivated</option>
                 </select>
               </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="includeUserCounts"
+                  checked={includeUserCounts}
+                  onChange={(e) => setIncludeUserCounts(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label
+                  htmlFor="includeUserCounts"
+                  className="text-sm text-gray-700"
+                >
+                  Show user counts
+                </label>
+              </div>
             </div>
           </div>
 
@@ -507,7 +525,17 @@ export default function OrganizationsPage() {
                           </Badge>
                           <div className="flex items-center text-xs text-gray-600">
                             <Users className="h-3 w-3 mr-1" />
-                            {org.user_count || 0} users
+                            {includeUserCounts ? (
+                              loading ? (
+                                <span className="text-gray-400">
+                                  Loading...
+                                </span>
+                              ) : (
+                                `${org.user_count || 0} users`
+                              )
+                            ) : (
+                              <span className="text-gray-400">Not loaded</span>
+                            )}
                           </div>
                         </div>
                       </TableCell>

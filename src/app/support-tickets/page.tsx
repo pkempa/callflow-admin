@@ -21,8 +21,20 @@ import {
   Download,
   File,
   Image,
+  Filter,
+  RefreshCw,
+  Send,
+  Mail,
+  Calendar,
+  Users,
+  AlertTriangle,
+  Plus,
+  ChevronDown,
+  ExternalLink,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Badge, StatusBadge, PlanBadge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input, SearchInput, Textarea } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -30,6 +42,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  DataTable,
 } from "@/components/ui/table";
 import {
   Dialog,
@@ -38,6 +51,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogBody,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -47,7 +61,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -216,9 +229,13 @@ export default function SupportTicketsPage() {
   // Attachment helper functions
   const getFileIcon = (fileType: string) => {
     if (fileType.startsWith("image/")) {
-      return <Image className="w-4 h-4" aria-label="Image file" />;
+      return (
+        <Image className="w-4 h-4 text-blue-500" aria-label="Image file" />
+      );
     }
-    return <File className="w-4 h-4" aria-label="File attachment" />;
+    return (
+      <File className="w-4 h-4 text-slate-500" aria-label="File attachment" />
+    );
   };
 
   const formatFileSize = (bytes: number) => {
@@ -240,124 +257,208 @@ export default function SupportTicketsPage() {
     }
   };
 
-  const getStatusBadgeColor = (status: string) => {
+  const getStatusBadgeVariant = (
+    status: string
+  ): "success" | "warning" | "destructive" | "info" | "secondary" => {
     switch (status) {
       case "open":
-        return "bg-blue-100 text-blue-800";
+        return "info";
       case "in_progress":
-        return "bg-yellow-100 text-yellow-800";
+        return "warning";
       case "waiting_for_customer":
-        return "bg-orange-100 text-orange-800";
+        return "warning";
       case "resolved":
-        return "bg-green-100 text-green-800";
+        return "success";
       case "closed":
-        return "bg-gray-100 text-gray-800";
+        return "secondary";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "secondary";
     }
   };
 
-  const getPriorityBadgeColor = (priority: string) => {
+  const getPriorityBadgeVariant = (
+    priority: string
+  ): "destructive" | "warning" | "info" | "success" => {
     switch (priority) {
       case "urgent":
-        return "bg-red-100 text-red-800";
+        return "destructive";
       case "high":
-        return "bg-orange-100 text-orange-800";
+        return "warning";
       case "medium":
-        return "bg-yellow-100 text-yellow-800";
+        return "info";
       case "low":
-        return "bg-green-100 text-green-800";
+        return "success";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "info";
     }
   };
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case "technical":
-        return <AlertCircle className="h-4 w-4" />;
+        return <AlertCircle className="h-4 w-4 text-blue-500" />;
       case "billing":
-        return <Building className="h-4 w-4" />;
+        return <Building className="h-4 w-4 text-emerald-500" />;
       case "feature_request":
-        return <MessageCircle className="h-4 w-4" />;
+        return <MessageCircle className="h-4 w-4 text-purple-500" />;
       case "bug_report":
-        return <XCircle className="h-4 w-4" />;
+        return <XCircle className="h-4 w-4 text-red-500" />;
       case "account":
-        return <User className="h-4 w-4" />;
+        return <User className="h-4 w-4 text-amber-500" />;
       default:
-        return <Tag className="h-4 w-4" />;
+        return <Tag className="h-4 w-4 text-slate-500" />;
+    }
+  };
+
+  const getStatusDisplayText = (status: string) => {
+    switch (status) {
+      case "open":
+        return "Open";
+      case "in_progress":
+        return "In Progress";
+      case "waiting_for_customer":
+        return "Waiting for Customer";
+      case "resolved":
+        return "Resolved";
+      case "closed":
+        return "Closed";
+      default:
+        return status;
+    }
+  };
+
+  const getPriorityDisplayText = (priority: string) => {
+    switch (priority) {
+      case "low":
+        return "Low";
+      case "medium":
+        return "Medium";
+      case "high":
+        return "High";
+      case "urgent":
+        return "Urgent";
+      default:
+        return priority;
     }
   };
 
   if (!isLoaded) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-lg mx-auto mb-4 animate-pulse"></div>
+          <div className="text-lg font-medium text-slate-700">Loading...</div>
+        </div>
+      </div>
+    );
   }
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
-            Support Tickets
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage customer support tickets and responses
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">
+              Support Tickets
+            </h1>
+            <p className="mt-1 text-slate-600">
+              Manage customer support tickets and responses
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={fetchTickets}
+              variant="outline"
+              leftIcon={
+                <RefreshCw
+                  className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                />
+              }
+              disabled={loading}
+            >
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="flex items-center p-6">
-              <div className="flex items-center space-x-2">
-                <Clock className="h-8 w-8 text-blue-600" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <Card
+            variant="elevated"
+            className="border-l-4 border-l-blue-500 card-hover"
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-sm font-medium text-slate-600">
+                    Open Tickets
+                  </p>
+                  <p className="text-3xl font-bold text-slate-900 mt-1">
                     {statistics.total_open}
                   </p>
-                  <p className="text-xs font-medium text-gray-500">Open</p>
+                </div>
+                <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-xl">
+                  <Clock className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="flex items-center p-6">
-              <div className="flex items-center space-x-2">
-                <AlertCircle className="h-8 w-8 text-yellow-600" />
+
+          <Card
+            variant="elevated"
+            className="border-l-4 border-l-amber-500 card-hover"
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {statistics.total_in_progress}
-                  </p>
-                  <p className="text-xs font-medium text-gray-500">
+                  <p className="text-sm font-medium text-slate-600">
                     In Progress
                   </p>
+                  <p className="text-3xl font-bold text-slate-900 mt-1">
+                    {statistics.total_in_progress}
+                  </p>
+                </div>
+                <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-400 rounded-xl">
+                  <AlertCircle className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="flex items-center p-6">
-              <div className="flex items-center space-x-2">
-                <CheckCircle className="h-8 w-8 text-green-600" />
+
+          <Card
+            variant="elevated"
+            className="border-l-4 border-l-emerald-500 card-hover"
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-sm font-medium text-slate-600">Resolved</p>
+                  <p className="text-3xl font-bold text-slate-900 mt-1">
                     {statistics.total_resolved}
                   </p>
-                  <p className="text-xs font-medium text-gray-500">Resolved</p>
+                </div>
+                <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-400 rounded-xl">
+                  <CheckCircle className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="flex items-center p-6">
-              <div className="flex items-center space-x-2">
-                <XCircle className="h-8 w-8 text-gray-600" />
+
+          <Card
+            variant="elevated"
+            className="border-l-4 border-l-slate-500 card-hover"
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-sm font-medium text-slate-600">Closed</p>
+                  <p className="text-3xl font-bold text-slate-900 mt-1">
                     {statistics.total_closed}
                   </p>
-                  <p className="text-xs font-medium text-gray-500">Closed</p>
+                </div>
+                <div className="p-3 bg-gradient-to-br from-slate-500 to-slate-400 rounded-xl">
+                  <XCircle className="h-6 w-6 text-white" />
                 </div>
               </div>
             </CardContent>
@@ -365,215 +466,231 @@ export default function SupportTicketsPage() {
         </div>
 
         {/* Search and Filters */}
-        <Card>
+        <Card className="overflow-hidden">
+          <CardHeader variant="elevated">
+            <CardTitle className="flex items-center">
+              <Filter className="h-5 w-5 mr-2 text-blue-500" />
+              Search & Filters
+            </CardTitle>
+          </CardHeader>
           <CardContent className="p-6">
-            <form
-              onSubmit={handleSearch}
-              className="flex flex-col sm:flex-row gap-4"
-            >
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search tickets..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="open">Open</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="waiting_for_customer">
-                    Waiting for Customer
-                  </option>
-                  <option value="resolved">Resolved</option>
-                  <option value="closed">Closed</option>
-                </select>
-                <select
+            <form onSubmit={handleSearch} className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                <SearchInput
+                  placeholder="Search tickets..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  fullWidth
+                />
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="waiting_for_customer">
+                      Waiting for Customer
+                    </SelectItem>
+                    <SelectItem value="resolved">Resolved</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
                   value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  onValueChange={setFilterCategory}
                 >
-                  <option value="all">All Categories</option>
-                  <option value="technical">Technical</option>
-                  <option value="billing">Billing</option>
-                  <option value="feature_request">Feature Request</option>
-                  <option value="bug_report">Bug Report</option>
-                  <option value="account">Account</option>
-                  <option value="general">General</option>
-                </select>
-                <select
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="technical">Technical</SelectItem>
+                    <SelectItem value="billing">Billing</SelectItem>
+                    <SelectItem value="feature_request">
+                      Feature Request
+                    </SelectItem>
+                    <SelectItem value="bug_report">Bug Report</SelectItem>
+                    <SelectItem value="account">Account</SelectItem>
+                    <SelectItem value="general">General</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
                   value={filterPriority}
-                  onChange={(e) => setFilterPriority(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  onValueChange={setFilterPriority}
                 >
-                  <option value="all">All Priorities</option>
-                  <option value="urgent">Urgent</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                </select>
-                <button
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Priorities" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Priorities</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex justify-end">
+                <Button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  variant="gradient"
+                  leftIcon={<Search className="h-4 w-4" />}
                 >
-                  <Search className="h-4 w-4" />
-                </button>
+                  Search Tickets
+                </Button>
               </div>
             </form>
           </CardContent>
         </Card>
 
         {/* Tickets Table */}
-        <Card>
-          <CardHeader>
+        <Card className="overflow-hidden">
+          <CardHeader variant="elevated">
             <CardTitle>Support Tickets ({pagination.total})</CardTitle>
           </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="text-center py-4">Loading tickets...</div>
-            ) : tickets.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No tickets found
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ticket</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tickets.map((ticket) => (
-                    <TableRow
-                      key={ticket.id}
-                      className="cursor-pointer hover:bg-gray-50"
-                    >
-                      <TableCell className="font-medium">
+          <CardContent className="p-0">
+            <DataTable
+              loading={loading}
+              empty={tickets.length === 0}
+              emptyMessage="No tickets found"
+            >
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Ticket</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tickets.map((ticket) => (
+                  <TableRow key={ticket.id} className="hover:bg-slate-50">
+                    <TableCell>
+                      <div className="space-y-1">
                         <button
                           onClick={() => handleTicketClick(ticket)}
-                          className="text-blue-600 hover:text-blue-800"
+                          className="font-medium text-blue-600 hover:text-blue-800 transition-colors"
                         >
                           {ticket.ticket_number}
                         </button>
-                      </TableCell>
-                      <TableCell>
-                        <div className="max-w-xs">
-                          <p className="font-medium text-sm truncate">
-                            {ticket.subject}
-                          </p>
-                          <p className="text-xs text-gray-500 truncate">
-                            {ticket.description}
-                          </p>
+                        <div className="text-sm text-slate-600 line-clamp-2">
+                          {ticket.subject}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <div>
-                            User ID: {ticket.user_id.substring(0, 8)}...
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full flex items-center justify-center">
+                          <User className="h-4 w-4 text-white" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-slate-900">
+                            {ticket.metadata?.is_anonymous
+                              ? "Anonymous"
+                              : "User"}
                           </div>
-                          <div className="text-gray-500">
-                            {ticket.organization_account_number ||
-                              `Org: ${ticket.organization_id.substring(
-                                0,
-                                8
-                              )}...`}
+                          <div className="text-xs text-slate-500">
+                            {ticket.organization_name || "No organization"}
                           </div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          {getCategoryIcon(ticket.category)}
-                          <span className="capitalize">
-                            {ticket.category.replace("_", " ")}
-                          </span>
-                          {ticket.attachments &&
-                            ticket.attachments.length > 0 && (
-                              <div
-                                className="flex items-center text-gray-400"
-                                title={`${ticket.attachments.length} attachment(s)`}
-                              >
-                                <Paperclip className="w-3 h-3" />
-                              </div>
-                            )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={getPriorityBadgeColor(ticket.priority)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        {getCategoryIcon(ticket.category)}
+                        <span className="capitalize text-sm text-slate-700">
+                          {ticket.category.replace("_", " ")}
+                        </span>
+                        {ticket.attachments &&
+                          ticket.attachments.length > 0 && (
+                            <Badge variant="outline" size="sm">
+                              <Paperclip className="w-3 h-3 mr-1" />
+                              {ticket.attachments.length}
+                            </Badge>
+                          )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={getPriorityBadgeVariant(ticket.priority)}
+                        size="sm"
+                      >
+                        {ticket.priority}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={getStatusBadgeVariant(ticket.status)}
+                        size="sm"
+                      >
+                        {ticket.status.replace("_", " ")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center text-sm text-slate-500">
+                        <Calendar className="h-4 w-4 mr-1" />
+                        {new Date(ticket.created_at).toLocaleDateString()}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTicketClick(ticket);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 h-8 w-8 p-0"
+                          title="View Details"
                         >
-                          {ticket.priority}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getStatusBadgeColor(ticket.status)}>
-                          {ticket.status.replace("_", " ")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm text-gray-500">
-                          {new Date(ticket.created_at).toLocaleDateString()}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="h-8 w-8 p-0 rounded-md hover:bg-gray-100">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => handleTicketClick(ticket)}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleStatusUpdate(ticket.id, "in_progress")
-                              }
-                            >
-                              <Clock className="mr-2 h-4 w-4" />
-                              Mark In Progress
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleStatusUpdate(ticket.id, "resolved")
-                              }
-                            >
-                              <CheckCircle className="mr-2 h-4 w-4" />
-                              Mark Resolved
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStatusUpdate(ticket.id, "in_progress");
+                          }}
+                          className="text-amber-600 hover:text-amber-800 h-8 w-8 p-0"
+                          disabled={ticket.status === "in_progress"}
+                          title="Mark In Progress"
+                        >
+                          <Clock className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStatusUpdate(ticket.id, "resolved");
+                          }}
+                          className="text-emerald-600 hover:text-emerald-800 h-8 w-8 p-0"
+                          disabled={
+                            ticket.status === "resolved" ||
+                            ticket.status === "closed"
+                          }
+                          title="Mark Resolved"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </DataTable>
 
             {/* Pagination */}
             {tickets.length > 0 && (
-              <div className="flex items-center justify-between space-x-2 py-4">
-                <div className="text-sm text-gray-500">
+              <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50">
+                <div className="text-sm text-slate-600">
                   Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
                   {Math.min(
                     pagination.page * pagination.limit,
@@ -582,7 +699,9 @@ export default function SupportTicketsPage() {
                   of {pagination.total} tickets
                 </div>
                 <div className="flex space-x-2">
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() =>
                       setPagination((prev) => ({
                         ...prev,
@@ -590,11 +709,12 @@ export default function SupportTicketsPage() {
                       }))
                     }
                     disabled={!pagination.has_prev}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
                   >
                     Previous
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() =>
                       setPagination((prev) => ({
                         ...prev,
@@ -602,303 +722,474 @@ export default function SupportTicketsPage() {
                       }))
                     }
                     disabled={!pagination.has_next}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
                   >
                     Next
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Ticket Detail Modal */}
-        <Dialog open={ticketDetailOpen} onOpenChange={setTicketDetailOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        {/* Enhanced Ticket Detail Modal */}
+        <Dialog
+          open={ticketDetailOpen}
+          onOpenChange={setTicketDetailOpen}
+          size="full"
+        >
+          <DialogContent
+            className="max-w-5xl max-h-[95vh] overflow-hidden"
+            showClose={true}
+            onClose={() => setTicketDetailOpen(false)}
+          >
             {selectedTicket && (
               <>
-                <DialogHeader>
-                  <DialogTitle className="flex items-center space-x-2">
-                    <span>Ticket {selectedTicket.ticket_number}</span>
-                    <Badge
-                      className={getStatusBadgeColor(selectedTicket.status)}
-                    >
-                      {selectedTicket.status.replace("_", " ")}
-                    </Badge>
-                    <Badge
-                      className={getPriorityBadgeColor(selectedTicket.priority)}
-                    >
-                      {selectedTicket.priority}
-                    </Badge>
-                  </DialogTitle>
-                  <DialogDescription>
-                    {selectedTicket.subject}
-                  </DialogDescription>
+                <DialogHeader variant="gradient">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-white/20 rounded-lg">
+                        <MessageCircle className="h-6 w-6 text-blue-700" />
+                      </div>
+                      <div>
+                        <DialogTitle className="text-xl text-blue-900">
+                          Ticket {selectedTicket.ticket_number}
+                        </DialogTitle>
+                        <DialogDescription className="text-blue-700 mt-1">
+                          {selectedTicket.subject}
+                        </DialogDescription>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Badge
+                        variant={getStatusBadgeVariant(selectedTicket.status)}
+                      >
+                        {selectedTicket.status.replace("_", " ")}
+                      </Badge>
+                      <Badge
+                        variant={getPriorityBadgeVariant(
+                          selectedTicket.priority
+                        )}
+                      >
+                        {selectedTicket.priority}
+                      </Badge>
+                    </div>
+                  </div>
                 </DialogHeader>
 
-                <div className="space-y-6">
-                  {/* Ticket Info */}
-                  <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <Label className="text-sm font-medium text-gray-500">
-                        Customer
-                      </Label>
-                      {selectedTicket.metadata?.is_anonymous ? (
-                        <div>
-                          <p className="text-sm font-medium text-orange-600">
-                            Anonymous Contact
-                          </p>
-                          <p className="text-sm">
-                            Name:{" "}
-                            {selectedTicket.metadata.contact_name as string}
-                          </p>
-                          <p className="text-sm">
-                            Email:{" "}
-                            {selectedTicket.metadata.contact_email as string}
-                          </p>
-                          {selectedTicket.metadata.contact_company && (
-                            <p className="text-sm">
-                              Company:{" "}
-                              {String(selectedTicket.metadata.contact_company)}
-                            </p>
-                          )}
-                          <p className="text-sm text-gray-500">
-                            Inquiry Type:{" "}
-                            {selectedTicket.metadata.inquiry_type as string}
-                          </p>
-                        </div>
-                      ) : (
-                        <>
-                          <p className="text-sm">
-                            User ID: {selectedTicket.user_id}
-                          </p>
-                          <p className="text-sm">
-                            {selectedTicket.organization_account_number
-                              ? `Account: ${selectedTicket.organization_account_number}`
-                              : `Org ID: ${selectedTicket.organization_id}`}
-                          </p>
-                          {selectedTicket.organization_name && (
-                            <p className="text-sm text-gray-500">
-                              {selectedTicket.organization_name}
-                            </p>
-                          )}
-                        </>
-                      )}
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium text-gray-500">
-                        Category
-                      </Label>
-                      <p className="text-sm capitalize">
-                        {selectedTicket.category.replace("_", " ")}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium text-gray-500">
-                        Created
-                      </Label>
-                      <p className="text-sm">
-                        {new Date(selectedTicket.created_at).toLocaleString()}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium text-gray-500">
-                        Last Updated
-                      </Label>
-                      <p className="text-sm">
-                        {new Date(selectedTicket.updated_at).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  <div>
-                    <Label className="text-sm font-medium text-gray-900">
-                      Description
-                    </Label>
-                    <div className="mt-2 p-3 bg-white border border-gray-200 rounded-md">
-                      <p className="text-sm whitespace-pre-wrap">
-                        {selectedTicket.description}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Attachments */}
-                  {selectedTicket.attachments &&
-                    selectedTicket.attachments.length > 0 && (
-                      <div>
-                        <Label className="text-sm font-medium text-gray-900">
-                          Attachments ({selectedTicket.attachments.length})
-                        </Label>
-                        <div className="mt-2 space-y-2">
-                          {selectedTicket.attachments.map(
-                            (attachment, index) => (
-                              <div
-                                key={`${attachment.s3_key}-${index}`}
-                                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                              >
-                                <div className="flex items-center space-x-3">
-                                  {getFileIcon(attachment.file_type)}
-                                  <div>
-                                    <p className="text-sm font-medium text-gray-900">
-                                      {attachment.original_filename}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                      {formatFileSize(attachment.file_size)} •{" "}
-                                      {attachment.file_type}
-                                    </p>
+                <DialogBody className="overflow-y-auto max-h-[70vh]">
+                  <div className="space-y-6">
+                    {/* Customer Info Card */}
+                    <Card variant="outlined">
+                      <CardHeader>
+                        <CardTitle className="flex items-center text-lg">
+                          <Users className="h-5 w-5 mr-2 text-blue-500" />
+                          Customer Information
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-4">
+                            {selectedTicket.metadata?.is_anonymous ? (
+                              <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+                                <div className="flex items-center mb-3">
+                                  <AlertTriangle className="h-5 w-5 text-amber-600 mr-2" />
+                                  <span className="font-semibold text-amber-800">
+                                    Anonymous Contact
+                                  </span>
+                                </div>
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex items-center">
+                                    <User className="h-4 w-4 text-amber-600 mr-2" />
+                                    <span className="font-medium">Name:</span>
+                                    <span className="ml-1">
+                                      {
+                                        selectedTicket.metadata
+                                          .contact_name as string
+                                      }
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center">
+                                    <Mail className="h-4 w-4 text-amber-600 mr-2" />
+                                    <span className="font-medium">Email:</span>
+                                    <span className="ml-1">
+                                      {
+                                        selectedTicket.metadata
+                                          .contact_email as string
+                                      }
+                                    </span>
+                                  </div>
+                                  {selectedTicket.metadata.contact_company && (
+                                    <div className="flex items-center">
+                                      <Building className="h-4 w-4 text-amber-600 mr-2" />
+                                      <span className="font-medium">
+                                        Company:
+                                      </span>
+                                      <span className="ml-1">
+                                        {String(
+                                          selectedTicket.metadata
+                                            .contact_company
+                                        )}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className="flex items-center">
+                                    <Tag className="h-4 w-4 text-amber-600 mr-2" />
+                                    <span className="font-medium">
+                                      Inquiry Type:
+                                    </span>
+                                    <span className="ml-1">
+                                      {
+                                        selectedTicket.metadata
+                                          .inquiry_type as string
+                                      }
+                                    </span>
                                   </div>
                                 </div>
-                                <button
-                                  onClick={() => downloadAttachment(attachment)}
-                                  className="p-2 text-blue-600 hover:text-blue-700 rounded-lg hover:bg-blue-50"
-                                  title="Download attachment"
-                                >
-                                  <Download className="w-4 h-4" />
-                                </button>
                               </div>
-                            )
+                            ) : (
+                              <div className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-200">
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex items-center">
+                                    <User className="h-4 w-4 text-blue-600 mr-2" />
+                                    <span className="font-medium">
+                                      User ID:
+                                    </span>
+                                    <span className="ml-1 font-mono text-xs">
+                                      {selectedTicket.user_id}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center">
+                                    <Building className="h-4 w-4 text-blue-600 mr-2" />
+                                    <span className="font-medium">
+                                      {selectedTicket.organization_account_number
+                                        ? "Account:"
+                                        : "Organization ID:"}
+                                    </span>
+                                    <span className="ml-1 font-mono text-xs">
+                                      {selectedTicket.organization_account_number ||
+                                        selectedTicket.organization_id}
+                                    </span>
+                                  </div>
+                                  {selectedTicket.organization_name && (
+                                    <div className="flex items-center">
+                                      <Building className="h-4 w-4 text-blue-600 mr-2" />
+                                      <span className="font-medium">
+                                        Organization:
+                                      </span>
+                                      <span className="ml-1">
+                                        {selectedTicket.organization_name}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-4">
+                            <div className="p-4 bg-slate-50 rounded-lg">
+                              <h4 className="font-medium text-slate-900 mb-3 flex items-center">
+                                <Tag className="h-4 w-4 mr-2 text-slate-600" />
+                                Ticket Details
+                              </h4>
+                              <div className="space-y-3 text-sm">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-slate-600">
+                                    Category:
+                                  </span>
+                                  <div className="flex items-center">
+                                    {getCategoryIcon(selectedTicket.category)}
+                                    <span className="ml-1 capitalize">
+                                      {selectedTicket.category.replace(
+                                        "_",
+                                        " "
+                                      )}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-slate-600">
+                                    Created:
+                                  </span>
+                                  <span className="flex items-center text-slate-900">
+                                    <Calendar className="h-4 w-4 mr-1" />
+                                    {new Date(
+                                      selectedTicket.created_at
+                                    ).toLocaleString()}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-slate-600">
+                                    Last Updated:
+                                  </span>
+                                  <span className="flex items-center text-slate-900">
+                                    <Clock className="h-4 w-4 mr-1" />
+                                    {new Date(
+                                      selectedTicket.updated_at
+                                    ).toLocaleString()}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Description */}
+                    <Card variant="outlined">
+                      <CardHeader>
+                        <CardTitle className="flex items-center text-lg">
+                          <MessageCircle className="h-5 w-5 mr-2 text-emerald-500" />
+                          Description
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="p-4 bg-white border border-slate-200 rounded-lg">
+                          <p className="text-slate-900 whitespace-pre-wrap leading-relaxed">
+                            {selectedTicket.description}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Attachments */}
+                    {selectedTicket.attachments &&
+                      selectedTicket.attachments.length > 0 && (
+                        <Card variant="outlined">
+                          <CardHeader>
+                            <CardTitle className="flex items-center text-lg">
+                              <Paperclip className="h-5 w-5 mr-2 text-purple-500" />
+                              Attachments ({selectedTicket.attachments.length})
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid gap-3">
+                              {selectedTicket.attachments.map(
+                                (attachment, index) => (
+                                  <div
+                                    key={`${attachment.s3_key}-${index}`}
+                                    className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors border border-slate-200"
+                                  >
+                                    <div className="flex items-center space-x-3">
+                                      <div className="p-2 bg-white rounded-lg border border-slate-200">
+                                        {getFileIcon(attachment.file_type)}
+                                      </div>
+                                      <div>
+                                        <p className="font-medium text-slate-900">
+                                          {attachment.original_filename}
+                                        </p>
+                                        <p className="text-sm text-slate-500">
+                                          {formatFileSize(attachment.file_size)}{" "}
+                                          • {attachment.file_type}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() =>
+                                        downloadAttachment(attachment)
+                                      }
+                                      className="h-8 w-8 p-0"
+                                      aria-label="Download attachment"
+                                    >
+                                      <Download className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                    {/* Admin Controls */}
+                    <Card variant="outlined">
+                      <CardHeader>
+                        <CardTitle className="flex items-center text-lg">
+                          <Tag className="h-5 w-5 mr-2 text-amber-500" />
+                          Admin Controls
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-sm font-medium text-slate-900 mb-2 block">
+                              Status
+                            </Label>
+                            <Select
+                              value={selectedTicket.status}
+                              onValueChange={(value) =>
+                                handleStatusUpdate(selectedTicket.id, value)
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="open">Open</SelectItem>
+                                <SelectItem value="in_progress">
+                                  In Progress
+                                </SelectItem>
+                                <SelectItem value="waiting_for_customer">
+                                  Waiting for Customer
+                                </SelectItem>
+                                <SelectItem value="resolved">
+                                  Resolved
+                                </SelectItem>
+                                <SelectItem value="closed">Closed</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium text-slate-900 mb-2 block">
+                              Priority
+                            </Label>
+                            <Select
+                              value={selectedTicket.priority}
+                              onValueChange={(value) =>
+                                handlePriorityUpdate(selectedTicket.id, value)
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select priority" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="low">Low</SelectItem>
+                                <SelectItem value="medium">Medium</SelectItem>
+                                <SelectItem value="high">High</SelectItem>
+                                <SelectItem value="urgent">Urgent</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Responses */}
+                    <Card variant="outlined">
+                      <CardHeader>
+                        <CardTitle className="flex items-center text-lg">
+                          <MessageCircle className="h-5 w-5 mr-2 text-blue-500" />
+                          Responses
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4 max-h-60 overflow-y-auto">
+                          {selectedTicket.responses.length === 0 ? (
+                            <div className="text-center py-8">
+                              <MessageCircle className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                              <p className="text-slate-500">No responses yet</p>
+                            </div>
+                          ) : (
+                            selectedTicket.responses.map((response) => (
+                              <div
+                                key={response.id}
+                                className={`p-4 rounded-lg border-l-4 ${
+                                  response.is_internal
+                                    ? "bg-gradient-to-r from-amber-50 to-yellow-50 border-l-amber-400"
+                                    : "bg-gradient-to-r from-blue-50 to-cyan-50 border-l-blue-400"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center space-x-2">
+                                    <div
+                                      className={`p-1.5 rounded-full ${
+                                        response.is_internal
+                                          ? "bg-amber-100"
+                                          : "bg-blue-100"
+                                      }`}
+                                    >
+                                      {response.is_internal ? (
+                                        <AlertTriangle className="h-3 w-3 text-amber-600" />
+                                      ) : (
+                                        <MessageCircle className="h-3 w-3 text-blue-600" />
+                                      )}
+                                    </div>
+                                    <span className="text-sm font-medium text-slate-900">
+                                      {response.admin_user_id
+                                        ? "Admin"
+                                        : "System"}
+                                      {response.is_internal && " (Internal)"}
+                                    </span>
+                                  </div>
+                                  <span className="text-xs text-slate-500 bg-white/50 px-2 py-1 rounded-full">
+                                    {new Date(
+                                      response.created_at
+                                    ).toLocaleString()}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-slate-900 whitespace-pre-wrap leading-relaxed">
+                                  {response.message}
+                                </p>
+                              </div>
+                            ))
                           )}
                         </div>
-                      </div>
-                    )}
+                      </CardContent>
+                    </Card>
 
-                  {/* Admin Controls */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-sm font-medium text-gray-900">
-                        Status
-                      </Label>
-                      <Select
-                        value={selectedTicket.status}
-                        onValueChange={(value) =>
-                          handleStatusUpdate(selectedTicket.id, value)
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="open">Open</SelectItem>
-                          <SelectItem value="in_progress">
-                            In Progress
-                          </SelectItem>
-                          <SelectItem value="waiting_for_customer">
-                            Waiting for Customer
-                          </SelectItem>
-                          <SelectItem value="resolved">Resolved</SelectItem>
-                          <SelectItem value="closed">Closed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium text-gray-900">
-                        Priority
-                      </Label>
-                      <Select
-                        value={selectedTicket.priority}
-                        onValueChange={(value) =>
-                          handlePriorityUpdate(selectedTicket.id, value)
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
-                          <SelectItem value="urgent">Urgent</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Responses */}
-                  <div>
-                    <Label className="text-sm font-medium text-gray-900">
-                      Responses
-                    </Label>
-                    <div className="mt-2 space-y-3 max-h-60 overflow-y-auto">
-                      {selectedTicket.responses.length === 0 ? (
-                        <p className="text-sm text-gray-500">
-                          No responses yet
-                        </p>
-                      ) : (
-                        selectedTicket.responses.map((response) => (
-                          <div
-                            key={response.id}
-                            className={`p-3 rounded-lg ${
-                              response.is_internal
-                                ? "bg-yellow-50 border-l-4 border-yellow-400"
-                                : "bg-blue-50 border-l-4 border-blue-400"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs font-medium text-gray-500">
-                                {response.admin_user_id ? "Admin" : "System"}
-                                {response.is_internal && " (Internal)"}
+                    {/* Add Response */}
+                    <Card variant="outlined">
+                      <CardHeader>
+                        <CardTitle className="flex items-center text-lg">
+                          <Plus className="h-5 w-5 mr-2 text-emerald-500" />
+                          Add Response
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <Textarea
+                            value={responseText}
+                            onChange={(e) => setResponseText(e.target.value)}
+                            placeholder="Enter your response..."
+                            rows={4}
+                            fullWidth
+                          />
+                          <div className="flex items-center space-x-3">
+                            <label className="flex items-center space-x-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={isInternal}
+                                onChange={(e) =>
+                                  setIsInternal(e.target.checked)
+                                }
+                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <span className="text-sm text-slate-700">
+                                Internal note (not visible to customer)
                               </span>
-                              <span className="text-xs text-gray-500">
-                                {new Date(response.created_at).toLocaleString()}
-                              </span>
-                            </div>
-                            <p className="text-sm whitespace-pre-wrap">
-                              {response.message}
-                            </p>
+                            </label>
+                            {isInternal && (
+                              <Badge variant="warning" size="sm">
+                                <AlertTriangle className="w-3 h-3 mr-1" />
+                                Internal Only
+                              </Badge>
+                            )}
                           </div>
-                        ))
-                      )}
-                    </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
+                </DialogBody>
 
-                  {/* Add Response */}
-                  <div>
-                    <Label className="text-sm font-medium text-gray-900">
-                      Add Response
-                    </Label>
-                    <div className="mt-2 space-y-3">
-                      <Textarea
-                        value={responseText}
-                        onChange={(e) => setResponseText(e.target.value)}
-                        placeholder="Enter your response..."
-                        rows={4}
-                      />
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id="internal"
-                          checked={isInternal}
-                          onChange={(e) => setIsInternal(e.target.checked)}
-                          className="rounded border-gray-300"
-                        />
-                        <label
-                          htmlFor="internal"
-                          className="text-sm text-gray-600"
-                        >
-                          Internal note (not visible to customer)
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <DialogFooter>
-                  <button
-                    type="button"
+                <DialogFooter className="bg-slate-50">
+                  <Button
+                    variant="outline"
                     onClick={() => setTicketDetailOpen(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                   >
                     Close
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="gradient"
                     onClick={handleAddResponse}
                     disabled={!responseText.trim() || isSubmitting}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50"
+                    loading={isSubmitting}
+                    leftIcon={<Send className="h-4 w-4" />}
                   >
                     {isSubmitting ? "Adding..." : "Add Response"}
-                  </button>
+                  </Button>
                 </DialogFooter>
               </>
             )}
