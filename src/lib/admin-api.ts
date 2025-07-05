@@ -798,10 +798,21 @@ export const adminAPI = {
     if (params.include_inactive) queryParams.append("include_inactive", "true");
     if (params.paid_only) queryParams.append("paid_only", "true");
 
-    const response = await apiRequest<{ plans: Plan[] }>(
-      `/plans?${queryParams}`
-    );
-    return response;
+    // Try admin endpoint first, fallback to public endpoint
+    try {
+      const response = await apiRequest<{ plans: Plan[] }>(
+        `/admin/plans?${queryParams}`
+      );
+      return response;
+    } catch (error) {
+      console.log(
+        "Admin plans endpoint not available, falling back to public endpoint"
+      );
+      const response = await apiRequest<{ plans: Plan[] }>(
+        `/plans?${queryParams}`
+      );
+      return response;
+    }
   },
 
   // Parameter Management API - for platform admins
