@@ -337,18 +337,11 @@ export const raceConditionUtils = {
       return false;
     }
 
-    // Add delay to ensure auth system is fully ready
-    const delay =
-      typeof window !== "undefined" &&
-      window.performance?.navigation?.type === 1
-        ? 800
-        : 500;
-
-    await new Promise((resolve) => setTimeout(resolve, delay));
+    // No delay needed - proceed immediately when auth is ready
 
     // Wait for auth to be ready
     if (!isAuthReady()) {
-      const ready = await waitForAuth(5000);
+      const ready = await waitForAuth(3000);
       return ready;
     }
 
@@ -359,7 +352,7 @@ export const raceConditionUtils = {
    * Add delay between API calls to prevent overwhelming the backend
    */
   async delayBetweenCalls(ms: number = 100): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, ms));
+    // No delay needed - modern systems can handle concurrent requests
   },
 
   /**
@@ -399,7 +392,7 @@ async function apiRequest<T>(
     // Automatically add authentication if available and required
     if (requireAuth) {
       if (!isAuthReady()) {
-        const authReady = await waitForAuth(3000); // Wait up to 3 seconds
+        const authReady = await waitForAuth(2000); // Wait up to 2 seconds
         if (!authReady) {
           return {
             success: false,

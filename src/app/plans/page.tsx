@@ -38,6 +38,7 @@ interface Plan {
   target_audience: string;
   gradient: string;
   icon: string;
+  plan_type?: string; // 'base' or 'addon'
 }
 
 export default function PlansPage() {
@@ -88,6 +89,7 @@ export default function PlansPage() {
         isActive: true,
         subscriberCount: 1250,
         revenue: 0,
+        plan_type: "base",
       },
       {
         id: "pay_as_you_go_intelligence",
@@ -114,6 +116,7 @@ export default function PlansPage() {
         isActive: true,
         subscriberCount: 89,
         revenue: 2670,
+        plan_type: "base",
       },
       {
         id: "smart_business",
@@ -139,6 +142,7 @@ export default function PlansPage() {
         isActive: true,
         subscriberCount: 456,
         revenue: 67944,
+        plan_type: "base",
       },
       {
         id: "revenue_engine",
@@ -165,6 +169,7 @@ export default function PlansPage() {
         isActive: true,
         subscriberCount: 189,
         revenue: 65961,
+        plan_type: "base",
       },
       {
         id: "enterprise_intelligence",
@@ -192,6 +197,35 @@ export default function PlansPage() {
         isActive: true,
         subscriberCount: 45,
         revenue: 35955,
+        plan_type: "base",
+      },
+      // Add-on Plans
+      {
+        id: "advanced_intelligence_suite",
+        name: "Advanced Intelligence Suite",
+        price: 29,
+        billing_cycle: "monthly",
+        description:
+          "Premium add-on for advanced AI transcription and intelligence features",
+        target_audience:
+          "Users who need advanced AI features and transcription",
+        gradient: "from-purple-500 to-pink-600",
+        icon: "brain",
+        features: [
+          "Advanced transcription",
+          "AI-powered call summaries",
+          "Sentiment analysis",
+          "Mood scoring",
+          "Keyword tracking",
+          "Conversation intelligence",
+          "Unlimited transcription retention",
+          "Real-time coaching",
+          "Premium support",
+        ],
+        isActive: true,
+        subscriberCount: 234,
+        revenue: 6786,
+        plan_type: "addon",
       },
     ];
 
@@ -240,10 +274,15 @@ export default function PlansPage() {
       rocket: Rocket,
       crown: Crown,
       building: Building,
+      brain: Brain,
       star: Star,
     };
     return icons[iconName as keyof typeof icons] || Star;
   };
+
+  // Separate base plans from add-ons
+  const basePlans = plans.filter((plan) => plan.plan_type === "base");
+  const addonPlans = plans.filter((plan) => plan.plan_type === "addon");
 
   if (!isLoaded || !isSignedIn) {
     return null;
@@ -356,117 +395,249 @@ export default function PlansPage() {
           </div>
         </div>
 
-        {/* Plans Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {plans.map((plan) => {
-            const IconComponent = getIconComponent(plan.icon);
-            return (
-              <div
-                key={plan.id}
-                className={`bg-white rounded-xl shadow-sm border-2 p-6 transition-all duration-200 hover:shadow-lg ${
-                  plan.isActive ? "border-green-200" : "border-gray-200"
-                }`}
-              >
-                {/* Plan Header */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <div
-                      className={`w-12 h-12 bg-gradient-to-r ${plan.gradient} rounded-lg flex items-center justify-center`}
-                    >
-                      <IconComponent className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {plan.name}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {plan.billing_cycle === "usage"
-                          ? "Usage-based"
-                          : `$${plan.price}/month`}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => togglePlanStatus(plan.id)}
-                    className={`p-2 rounded-lg transition-colors ${
-                      plan.isActive
-                        ? "bg-green-100 text-green-600"
-                        : "bg-gray-100 text-gray-400"
-                    }`}
-                  >
-                    {plan.isActive ? (
-                      <ToggleRight className="h-5 w-5" />
-                    ) : (
-                      <ToggleLeft className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-
-                {/* Plan Description */}
-                <p className="text-sm text-gray-600 mb-4">{plan.description}</p>
-
-                {/* Plan Stats */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <p className="text-lg font-bold text-gray-900">
-                      {plan.subscriberCount}
-                    </p>
-                    <p className="text-xs text-gray-600">Subscribers</p>
-                  </div>
-                  <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <p className="text-lg font-bold text-gray-900">
-                      ${plan.revenue.toLocaleString()}
-                    </p>
-                    <p className="text-xs text-gray-600">Revenue</p>
-                  </div>
-                </div>
-
-                {/* Plan Features */}
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">
-                    Key Features
-                  </h4>
-                  <div className="space-y-1">
-                    {plan.features.slice(0, 5).map((feature, index) => (
+        {/* Base Plans Grid */}
+        <div className="space-y-6">
+          <div className="flex items-center space-x-2">
+            <Building className="h-5 w-5 text-blue-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Base Plans</h2>
+            <span className="text-sm text-gray-500">({basePlans.length})</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {basePlans.map((plan) => {
+              const IconComponent = getIconComponent(plan.icon);
+              return (
+                <div
+                  key={plan.id}
+                  className={`bg-white rounded-xl shadow-sm border-2 p-6 transition-all duration-200 hover:shadow-lg ${
+                    plan.isActive ? "border-green-200" : "border-gray-200"
+                  }`}
+                >
+                  {/* Plan Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
                       <div
-                        key={index}
-                        className="flex items-center text-sm text-gray-600"
+                        className={`w-12 h-12 bg-gradient-to-r ${plan.gradient} rounded-lg flex items-center justify-center`}
                       >
-                        <Check className="w-3 h-3 text-green-500 mr-2 flex-shrink-0" />
-                        {feature}
+                        <IconComponent className="w-6 h-6 text-white" />
                       </div>
-                    ))}
-                    {plan.features.length > 5 && (
-                      <p className="text-xs text-gray-500">
-                        +{plan.features.length - 5} more features
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {plan.name}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          {plan.billing_cycle === "usage"
+                            ? "Usage-based"
+                            : `$${plan.price}/month`}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => togglePlanStatus(plan.id)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        plan.isActive
+                          ? "bg-green-100 text-green-600"
+                          : "bg-gray-100 text-gray-400"
+                      }`}
+                    >
+                      {plan.isActive ? (
+                        <ToggleRight className="h-5 w-5" />
+                      ) : (
+                        <ToggleLeft className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Plan Description */}
+                  <p className="text-sm text-gray-600 mb-4">
+                    {plan.description}
+                  </p>
+
+                  {/* Plan Stats */}
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <p className="text-lg font-bold text-gray-900">
+                        {plan.subscriberCount}
                       </p>
-                    )}
+                      <p className="text-xs text-gray-600">Subscribers</p>
+                    </div>
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <p className="text-lg font-bold text-gray-900">
+                        ${plan.revenue.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-gray-600">Revenue</p>
+                    </div>
+                  </div>
+
+                  {/* Plan Features */}
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">
+                      Key Features
+                    </h4>
+                    <div className="space-y-1">
+                      {plan.features.slice(0, 5).map((feature, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center text-sm text-gray-600"
+                        >
+                          <Check className="w-3 h-3 text-green-500 mr-2 flex-shrink-0" />
+                          {feature}
+                        </div>
+                      ))}
+                      {plan.features.length > 5 && (
+                        <p className="text-xs text-gray-500">
+                          +{plan.features.length - 5} more features
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Target Audience */}
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-900 mb-1">
+                      Target Audience
+                    </h4>
+                    <p className="text-xs text-gray-600">
+                      {plan.target_audience}
+                    </p>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex space-x-2">
+                    <button className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                      <Edit className="w-4 h-4 mr-1 inline" />
+                      Edit
+                    </button>
+                    <button className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                      View Details
+                    </button>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        </div>
 
-                {/* Target Audience */}
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-900 mb-1">
-                    Target Audience
-                  </h4>
-                  <p className="text-xs text-gray-600">
-                    {plan.target_audience}
+        {/* Add-ons Grid */}
+        <div className="space-y-6">
+          <div className="flex items-center space-x-2">
+            <Sparkles className="h-5 w-5 text-purple-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Add-ons</h2>
+            <span className="text-sm text-gray-500">({addonPlans.length})</span>
+            <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+              Can be added to any base plan
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {addonPlans.map((plan) => {
+              const IconComponent = getIconComponent(plan.icon);
+              return (
+                <div
+                  key={plan.id}
+                  className={`bg-white rounded-xl shadow-sm border-2 p-6 transition-all duration-200 hover:shadow-lg ${
+                    plan.isActive ? "border-purple-200" : "border-gray-200"
+                  }`}
+                >
+                  {/* Plan Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div
+                        className={`w-12 h-12 bg-gradient-to-r ${plan.gradient} rounded-lg flex items-center justify-center`}
+                      >
+                        <IconComponent className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {plan.name}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          +${plan.price}/month per user
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => togglePlanStatus(plan.id)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        plan.isActive
+                          ? "bg-purple-100 text-purple-600"
+                          : "bg-gray-100 text-gray-400"
+                      }`}
+                    >
+                      {plan.isActive ? (
+                        <ToggleRight className="h-5 w-5" />
+                      ) : (
+                        <ToggleLeft className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Plan Description */}
+                  <p className="text-sm text-gray-600 mb-4">
+                    {plan.description}
                   </p>
-                </div>
 
-                {/* Action Buttons */}
-                <div className="flex space-x-2">
-                  <button className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm">
-                    <Edit className="w-4 h-4 mr-1 inline" />
-                    Edit
-                  </button>
-                  <button className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
-                    View Details
-                  </button>
+                  {/* Plan Stats */}
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="text-center p-3 bg-purple-50 rounded-lg">
+                      <p className="text-lg font-bold text-gray-900">
+                        {plan.subscriberCount}
+                      </p>
+                      <p className="text-xs text-gray-600">Active Users</p>
+                    </div>
+                    <div className="text-center p-3 bg-purple-50 rounded-lg">
+                      <p className="text-lg font-bold text-gray-900">
+                        ${plan.revenue.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-gray-600">Revenue</p>
+                    </div>
+                  </div>
+
+                  {/* Plan Features */}
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">
+                      Premium Features
+                    </h4>
+                    <div className="space-y-1">
+                      {plan.features.slice(0, 5).map((feature, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center text-sm text-gray-600"
+                        >
+                          <Check className="w-3 h-3 text-purple-500 mr-2 flex-shrink-0" />
+                          {feature}
+                        </div>
+                      ))}
+                      {plan.features.length > 5 && (
+                        <p className="text-xs text-gray-500">
+                          +{plan.features.length - 5} more features
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Target Audience */}
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-900 mb-1">
+                      Best For
+                    </h4>
+                    <p className="text-xs text-gray-600">
+                      {plan.target_audience}
+                    </p>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex space-x-2">
+                    <button className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                      <Edit className="w-4 h-4 mr-1 inline" />
+                      Edit
+                    </button>
+                    <button className="flex-1 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm">
+                      View Details
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
 
         {/* Plan Performance Summary */}
@@ -480,6 +651,9 @@ export default function PlansPage() {
                 <tr className="border-b border-gray-200">
                   <th className="text-left py-3 px-4 font-medium text-gray-900">
                     Plan
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">
+                    Type
                   </th>
                   <th className="text-left py-3 px-4 font-medium text-gray-900">
                     Price
@@ -512,9 +686,22 @@ export default function PlansPage() {
                           </span>
                         </div>
                       </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            plan.plan_type === "addon"
+                              ? "bg-purple-100 text-purple-800"
+                              : "bg-blue-100 text-blue-800"
+                          }`}
+                        >
+                          {plan.plan_type === "addon" ? "Add-on" : "Base Plan"}
+                        </span>
+                      </td>
                       <td className="py-3 px-4 text-gray-600">
                         {plan.billing_cycle === "usage"
                           ? "Usage-based"
+                          : plan.plan_type === "addon"
+                          ? `+$${plan.price}/month per user`
                           : `$${plan.price}/month`}
                       </td>
                       <td className="py-3 px-4 text-gray-600">

@@ -13,27 +13,10 @@ export function AdminVerification({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoaded) {
       setHasInitialized(true);
-
-      // TEMPORARY: Skip verification and allow access
-      // We know the user is properly configured as platform admin in database
+      // Skip verification and allow access immediately
       setIsVerified(true);
-
-      // Original verification logic (commented out temporarily)
-      /*
-      if (user && !isVerified && !isVerifying) {
-        // Wait a moment for auth setup to complete before verifying
-        const timer = setTimeout(() => {
-          verifyAdminUser();
-        }, 1000);
-
-        return () => clearTimeout(timer);
-      } else if (!user) {
-        // No user authenticated, mark as "verified" to allow normal auth flow
-        setIsVerified(true);
-      }
-      */
     }
-  }, [isLoaded, user, isVerified]);
+  }, [isLoaded]);
 
   // Show loading state while Clerk is loading
   if (!hasInitialized) {
