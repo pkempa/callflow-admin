@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSignIn } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Lock, Mail, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, AlertCircle, Loader2 } from "lucide-react";
 
 export default function SignInPage() {
   const { isLoaded, signIn, setActive } = useSignIn();
@@ -34,14 +34,48 @@ export default function SignInPage() {
         setError("Authentication failed. Please try again.");
       }
     } catch (err: unknown) {
+      const error = err as {
+        errors?: Array<{ message?: string; code?: string }>;
+      };
       const errorMessage =
-        (err as { errors?: Array<{ message: string }> })?.errors?.[0]
-          ?.message || "Invalid email or password. Please try again.";
+        error.errors?.[0]?.message ||
+        "Invalid email or password. Please try again.";
+      const errorCode = error.errors?.[0]?.code;
+
+      // Check if this is a session active error and redirect instead of showing error
+      if (
+        errorCode === "session_exists" ||
+        errorMessage.toLowerCase().includes("session active")
+      ) {
+        router.push("/");
+        return;
+      }
+
       setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Show loading while Clerk is initializing
+  if (!isLoaded) {
+    return (
+      <div className="w-full max-w-md">
+        <div className="bg-white py-8 px-6 shadow-lg rounded-lg border border-gray-200">
+          <div className="text-center space-y-4">
+            <div className="mx-auto h-12 w-12 bg-blue-600 rounded-lg flex items-center justify-center">
+              <Loader2 className="h-6 w-6 text-white animate-spin" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Loading...
+              </h2>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-md">
