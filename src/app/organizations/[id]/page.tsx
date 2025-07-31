@@ -127,7 +127,7 @@ export default function OrganizationDetailPage() {
       .finally(() => {
         setActivitiesLoading(false);
       });
-  }, [organization, activitiesLoading]);
+  }, [organization]);
 
   const loadUsersOnDemand = useCallback(async () => {
     if (!organization || usersLoading) return;
@@ -178,7 +178,7 @@ export default function OrganizationDetailPage() {
     }
 
     setUsersLoading(false);
-  }, [organization, usersLoading]);
+  }, [organization]);
 
   // Function to load just the user count (lightweight)
   const loadUserCount = useCallback(async () => {
@@ -230,7 +230,7 @@ export default function OrganizationDetailPage() {
       loadUserCount();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, organization, loading]);
+  }, [activeTab, organization]);
 
   // Reset and refetch function for manual refresh
   const resetAndFetch = async () => {
@@ -363,7 +363,7 @@ export default function OrganizationDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [hasAttemptedFetch, loading, organizationId, setOrganizationProtected]);
+  }, [hasAttemptedFetch, organizationId, setOrganizationProtected]);
 
   // Initialize organization data loading
   useEffect(() => {

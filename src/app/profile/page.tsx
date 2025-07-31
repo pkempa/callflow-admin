@@ -240,7 +240,7 @@ export default function ProfilePage() {
               <button
                 onClick={handleCancel}
                 disabled={isSaving}
-                className="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+                className="inline-flex items-center px-4 py-2 bg-white/90 backdrop-blur-sm text-gray-800 border-2 border-gray-300 rounded-lg font-medium hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-400 hover:text-blue-700 hover:shadow-lg hover:scale-[1.02] transform transition-all duration-300 disabled:opacity-50"
               >
                 <X className="h-4 w-4 mr-2" />
                 Cancel

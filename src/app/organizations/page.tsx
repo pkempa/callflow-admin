@@ -120,7 +120,6 @@ export default function OrganizationsPage() {
     }
   }, [
     hasAttemptedFetch,
-    loading,
     pagination?.page,
     pagination?.limit,
     searchTerm,
