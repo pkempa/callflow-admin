@@ -24,8 +24,7 @@ export async function GET(request: NextRequest) {
 
     // Backend API URL
     const apiUrl =
-      process.env.NEXT_PUBLIC_API_URL ||
-      "https://gln3f6l37g.execute-api.us-east-1.amazonaws.com/prod";
+      process.env.NEXT_PUBLIC_API_URL || "https://api.callflowai.com";
 
     // Forward request to backend
     const backendUrl = `${apiUrl}/admin/logs${
@@ -95,8 +94,7 @@ export async function POST(request: NextRequest) {
 
     // Backend API URL
     const apiUrl =
-      process.env.NEXT_PUBLIC_API_URL ||
-      "https://gln3f6l37g.execute-api.us-east-1.amazonaws.com/prod";
+      process.env.NEXT_PUBLIC_API_URL || "https://api.callflowai.com";
 
     // Forward request to backend
     const backendUrl = `${apiUrl}/admin/logs`;

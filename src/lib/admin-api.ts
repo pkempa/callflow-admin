@@ -1,7 +1,6 @@
 // API configuration - using same base URL as main frontend
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  "https://gln3f6l37g.execute-api.us-east-1.amazonaws.com/prod";
+  process.env.NEXT_PUBLIC_API_URL || "https://api.callflowai.com";
 
 // API response types (matching main frontend)
 export interface ApiResponse<T = unknown> {
