@@ -4,7 +4,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import AdminLayout from "@/components/layout/AdminLayout";
+import NewAdminLayout from "@/components/layout/NewAdminLayout";
 import { adminAPI, Plan as APIPlan } from "@/lib/admin-api";
 import {
   Plus,
@@ -289,7 +289,7 @@ export default function PlansPage() {
   }
 
   return (
-    <AdminLayout>
+    <NewAdminLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
@@ -729,6 +729,6 @@ export default function PlansPage() {
           </div>
         </div>
       </div>
-    </AdminLayout>
+    </NewAdminLayout>
   );
 }

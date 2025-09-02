@@ -3,7 +3,7 @@
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import AdminLayout from "@/components/layout/AdminLayout";
+import NewAdminLayout from "@/components/layout/NewAdminLayout";
 import {
   LineChart,
   Line,
@@ -67,7 +67,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <AdminLayout>
+    <NewAdminLayout>
       <div className="space-y-6">
         {/* Header */}
         <div>
@@ -329,6 +329,6 @@ export default function AnalyticsPage() {
           </>
         )}
       </div>
-    </AdminLayout>
+    </NewAdminLayout>
   );
 }

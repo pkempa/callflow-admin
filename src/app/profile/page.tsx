@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from "react";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import AdminLayout from "@/components/layout/AdminLayout";
+import NewAdminLayout from "@/components/layout/NewAdminLayout";
 import { adminAPI } from "@/lib/admin-api";
+import { useAdminAuthorization } from "@/hooks/useAdminAuthorization";
 import {
   User,
   Mail,
@@ -53,6 +54,14 @@ export default function ProfilePage() {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Check admin authorization - will redirect to /unauthorized if not authorized
+  const {
+    isLoading: authLoading,
+    isAuthorized,
+    userProfile: authorizedProfile,
+    error: authError,
+  } = useAdminAuthorization();
   const [editForm, setEditForm] = useState({
     firstName: "",
     lastName: "",
@@ -62,10 +71,24 @@ export default function ProfilePage() {
   });
   const [isSaving, setIsSaving] = useState(false);
 
-  // Load user profile from backend
+  // Load user profile from backend - only if authorized
   useEffect(() => {
     const loadUserProfile = async () => {
-      if (!isLoaded || !isSignedIn) return;
+      if (!isLoaded || !isSignedIn || !isAuthorized || authLoading) return;
+
+      // If we have authorized profile data, use it directly
+      if (authorizedProfile) {
+        setBackendUser(authorizedProfile);
+        setEditForm({
+          firstName: authorizedProfile.first_name || "",
+          lastName: authorizedProfile.last_name || "",
+          phoneNumber: authorizedProfile.phone_number || "",
+          jobTitle: authorizedProfile.job_title || "",
+          department: authorizedProfile.department || "",
+        });
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
@@ -92,7 +115,7 @@ export default function ProfilePage() {
     };
 
     loadUserProfile();
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, isAuthorized, authLoading, authorizedProfile]);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -156,25 +179,32 @@ export default function ProfilePage() {
     setError(null);
   };
 
-  if (!isLoaded || loading) {
+  // Show loading while checking authorization or loading profile
+  if (!isLoaded || authLoading || (isAuthorized && loading)) {
     return (
-      <AdminLayout>
+      <NewAdminLayout>
         <div className="max-w-4xl mx-auto">
           <div className="text-center py-12">
             <div className="text-lg">Loading profile...</div>
           </div>
         </div>
-      </AdminLayout>
+      </NewAdminLayout>
     );
   }
 
+  // Don't render anything if not signed in (redirect will happen)
   if (!isSignedIn) {
+    return null;
+  }
+
+  // Don't render anything if not authorized (redirect to /unauthorized will happen)
+  if (!isAuthorized) {
     return null;
   }
 
   if (error && !backendUser) {
     return (
-      <AdminLayout>
+      <NewAdminLayout>
         <div className="max-w-4xl mx-auto">
           <div className="text-center py-12">
             <div className="text-red-600 text-lg">{error}</div>
@@ -186,7 +216,7 @@ export default function ProfilePage() {
             </button>
           </div>
         </div>
-      </AdminLayout>
+      </NewAdminLayout>
     );
   }
 
@@ -211,7 +241,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <AdminLayout>
+    <NewAdminLayout>
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
@@ -496,6 +526,6 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-    </AdminLayout>
+    </NewAdminLayout>
   );
 }

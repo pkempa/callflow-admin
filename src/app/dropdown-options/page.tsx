@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { adminAPI, DropdownOption } from "@/lib/admin-api";
-import AdminLayout from "@/components/layout/AdminLayout";
+import NewAdminLayout from "@/components/layout/NewAdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -240,16 +240,16 @@ export default function DropdownOptionsPage() {
 
   if (!isLoaded) {
     return (
-      <AdminLayout>
+      <NewAdminLayout>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
-      </AdminLayout>
+      </NewAdminLayout>
     );
   }
 
   return (
-    <AdminLayout>
+    <NewAdminLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
@@ -521,6 +521,6 @@ export default function DropdownOptionsPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </AdminLayout>
+    </NewAdminLayout>
   );
 }

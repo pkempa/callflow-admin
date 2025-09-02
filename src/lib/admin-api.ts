@@ -1,6 +1,6 @@
-// API configuration - using same base URL as main frontend
+// API configuration - using environment variable
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://api.callflowai.com";
+  process.env.NEXT_PUBLIC_API_URL || "https://api.pkempa.com";
 
 // API response types (matching main frontend)
 export interface ApiResponse<T = unknown> {
@@ -270,10 +270,9 @@ export interface StartImpersonationResponse {
   reason: string;
 }
 
-// Global auth helper - same pattern as main frontend
+// Global auth helper - will be set when user is authenticated
 let getAuthToken: (() => Promise<string | null>) | null = null;
 let signOutUser: (() => Promise<void>) | null = null;
-
 let authSystemInitialized = false;
 
 // Set the auth token getter (called from components that have access to useAuth)
@@ -287,11 +286,6 @@ export function setSignOutFunction(signOut: () => Promise<void>) {
   signOutUser = signOut;
 }
 
-// Helper function to check if auth is ready
-export function isAuthReady(): boolean {
-  return getAuthToken !== null && authSystemInitialized;
-}
-
 // Reset auth system (useful for cleanup/re-initialization)
 export function resetAuthSystem() {
   getAuthToken = null;
@@ -299,27 +293,32 @@ export function resetAuthSystem() {
   authSystemInitialized = false;
 }
 
-// Wait for auth to be ready with timeout - same pattern as frontend
-export function waitForAuth(timeoutMs: number = 5000): Promise<boolean> {
-  return new Promise((resolve) => {
-    const startTime = Date.now();
+// Helper function to check if auth is ready
+export function isAuthReady(): boolean {
+  return getAuthToken !== null && authSystemInitialized;
+}
 
-    const checkAuth = () => {
-      if (isAuthReady()) {
-        resolve(true);
-        return;
-      }
+// Helper function to wait for auth to be ready
+export async function waitForAuth(maxWaitMs: number = 3000): Promise<boolean> {
+  const startTime = Date.now();
 
-      if (Date.now() - startTime >= timeoutMs) {
-        resolve(false);
-        return;
-      }
+  while (!isAuthReady() && Date.now() - startTime < maxWaitMs) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
 
-      setTimeout(checkAuth, 100);
-    };
+  const isReady = isAuthReady();
+  const waitTime = Date.now() - startTime;
 
-    checkAuth();
-  });
+  if (isReady) {
+    // Auth system ready
+  } else {
+    console.error("Auth functions not ready within timeout", {
+      wait_time_ms: waitTime,
+      max_wait_ms: maxWaitMs,
+    });
+  }
+
+  return isReady;
 }
 
 // Race condition prevention utilities
@@ -375,12 +374,15 @@ export const raceConditionUtils = {
   },
 };
 
-// Generic API request function with automatic authentication and first-user setup
-async function apiRequest<T>(
+// Generic API request function with automatic authentication
+export async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {},
-  requireAuth = true
+  requireAuth = true,
+  disableAutoLogout = false
 ): Promise<ApiResponse<T>> {
+  const startTime = performance.now();
+
   try {
     const url = `${API_BASE_URL}${endpoint}`;
     const headers: Record<string, string> = {
@@ -390,18 +392,26 @@ async function apiRequest<T>(
 
     // Automatically add authentication if available and required
     if (requireAuth) {
-      if (!isAuthReady()) {
-        const authReady = await waitForAuth(2000); // Wait up to 2 seconds
-        if (!authReady) {
+      if (!getAuthToken) {
+        console.error(
+          "❌ API request requires auth but no auth token getter available"
+        );
+
+        // Wait a bit and retry once for initialization timing issues
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        if (!getAuthToken) {
+          console.error("❌ API request still requires auth after retry");
           return {
             success: false,
-            error: "Authentication not ready - please try again",
+            error:
+              "Authentication system not ready. Please wait and try again.",
           };
         }
       }
 
       try {
-        const token = await getAuthToken!();
+        const token = await getAuthToken();
         if (token) {
           headers.Authorization = `Bearer ${token}`;
 
@@ -416,12 +426,14 @@ async function apiRequest<T>(
             // Silently handle JWT parsing errors
           }
         } else {
+          console.warn("No auth token available", { endpoint });
           return {
             success: false,
             error: "No authentication token available",
           };
         }
-      } catch {
+      } catch (error) {
+        console.error("Failed to get auth token", error as Error, { endpoint });
         return {
           success: false,
           error: "Failed to get authentication token",
@@ -429,32 +441,119 @@ async function apiRequest<T>(
       }
     }
 
-    const response = await fetch(url, {
-      headers,
-      ...options,
-    });
+    let response: Response;
 
-    // Handle authentication errors with auto-setup retry
+    try {
+      response = await fetch(url, {
+        headers,
+        ...options,
+      });
+    } catch (networkError) {
+      const duration = performance.now() - startTime;
+
+      // Handle network errors that might be CORS-related authentication failures
+      console.error("Network error during API request", networkError as Error, {
+        endpoint,
+        method: options.method || "GET",
+        require_auth: requireAuth,
+        duration_ms: duration,
+      });
+
+      // Handle network errors properly - DON'T treat as authentication failures
+      if (
+        requireAuth &&
+        networkError instanceof TypeError &&
+        networkError.message.includes("Failed to fetch")
+      ) {
+        console.log(
+          `🌐 NETWORK ERROR - This should NOT cause logout: ${networkError.message}`
+        );
+
+        // For admin endpoints, treat network errors as potential authorization issues
+        if (endpoint.startsWith("/admin/")) {
+          return {
+            success: false,
+            error: "Access denied - Unable to verify admin privileges",
+          };
+        }
+
+        return {
+          success: false,
+          error:
+            "Network error occurred. Please check your connection and try again.",
+        };
+      }
+
+      // For other network errors, re-throw
+      throw networkError;
+    }
+
+    // Handle ONLY actual authentication errors (401/403) - Auto-logout for auth failures
     if (response.status === 401 || response.status === 403) {
-      // If this is not the setup endpoint itself, try auto-setup first
-      if (!endpoint.includes("/setup-first-user")) {
-        try {
-          const setupResponse = await adminAPI.setupFirstUser();
-          if (setupResponse.success && setupResponse.data?.user_created) {
-            // Retry the original request
-            const retryResponse = await fetch(url, {
-              headers,
-              ...options,
-            });
+      console.log(
+        `🚨 AUTHENTICATION FAILURE - ${response.status} response for ${endpoint}`
+      );
 
-            if (retryResponse.ok) {
-              const retryData: ApiResponse<T> = await retryResponse.json();
-              return retryData;
+      // For admin endpoints, treat 403 as access denied rather than auth failure
+      if (endpoint.startsWith("/admin/") && response.status === 403) {
+        console.log(
+          `🚫 ACCESS DENIED - User lacks platform admin privileges for ${endpoint}`
+        );
+        return {
+          success: false,
+          error: "Access denied - Platform admin privileges required",
+        };
+      }
+
+      console.log(
+        `🚨 Auto-logout triggered for ${response.status} - forcing redirect to sign-in`
+      );
+
+      // Only trigger auto-logout if not disabled
+      if (!disableAutoLogout) {
+        // CRITICAL: Only auto-logout for actual authentication failures
+        // NEVER logout on 500 errors or other server errors
+
+        // Force redirect to sign-in page for authentication failures
+        // Don't use the default signOut function as it may redirect to homepage
+        try {
+          // Clear any local storage or session data
+          localStorage.removeItem("lastActivity");
+          localStorage.removeItem("callflow-remember-me");
+          localStorage.removeItem("callflow-session-start");
+          sessionStorage.clear();
+
+          // Force redirect to sign-in page with error parameter
+          window.location.href = "/sign-in?error=auth_expired";
+        } catch (redirectError) {
+          console.error(
+            "Failed to redirect after auth failure",
+            redirectError as Error,
+            {
+              endpoint,
+              original_status: response.status,
+            }
+          );
+          // Fallback: try the signOut function as last resort
+          if (signOutUser) {
+            try {
+              await signOutUser();
+            } catch (signOutError) {
+              console.error(
+                "Failed to sign out user after auth failure",
+                signOutError as Error,
+                {
+                  endpoint,
+                  original_status: response.status,
+                }
+              );
             }
           }
-        } catch {
-          // Auto-setup failed, continue with normal error handling
         }
+      } else {
+        console.log(
+          `🚨 AUTHENTICATION FAILURE - Auto-logout disabled for ${response.status} during registration`
+        );
       }
 
       return {
@@ -1061,7 +1160,7 @@ export const adminAPI = {
     return response;
   },
 
-  // User Profile API
+  // Admin Profile API - platform admin only
   getUserProfile: async () => {
     const response = await apiRequest<{
       id: string;
@@ -1083,7 +1182,13 @@ export const adminAPI = {
         team_size: number;
         industry: string;
       };
-    }>("/auth/profile");
+      is_platform_admin?: boolean;
+      platform_permissions?: {
+        can_view_all_organizations: boolean;
+        can_manage_platform_users: boolean;
+        can_access_system_settings: boolean;
+      };
+    }>("/admin/profile");
 
     return response;
   },

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import AdminLayout from "@/components/layout/AdminLayout";
+import NewAdminLayout from "@/components/layout/NewAdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -187,20 +187,20 @@ export default function EditPlatformUserPage() {
 
   if (loading) {
     return (
-      <AdminLayout>
+      <NewAdminLayout>
         <div className="p-6 max-w-4xl mx-auto">
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
             <span className="ml-3 text-slate-600">Loading user...</span>
           </div>
         </div>
-      </AdminLayout>
+      </NewAdminLayout>
     );
   }
 
   if (error && !user) {
     return (
-      <AdminLayout>
+      <NewAdminLayout>
         <div className="p-6 max-w-4xl mx-auto">
           <div className="text-center py-12">
             <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-6" />
@@ -213,13 +213,13 @@ export default function EditPlatformUserPage() {
             </Button>
           </div>
         </div>
-      </AdminLayout>
+      </NewAdminLayout>
     );
   }
 
   if (success) {
     return (
-      <AdminLayout>
+      <NewAdminLayout>
         <div className="p-6 max-w-2xl mx-auto">
           <div className="text-center py-12">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-6" />
@@ -234,7 +234,7 @@ export default function EditPlatformUserPage() {
             </p>
           </div>
         </div>
-      </AdminLayout>
+      </NewAdminLayout>
     );
   }
 
@@ -245,7 +245,7 @@ export default function EditPlatformUserPage() {
   const editAllowed = canEditUser(user);
 
   return (
-    <AdminLayout>
+    <NewAdminLayout>
       <div className="p-6 max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -509,6 +509,6 @@ export default function EditPlatformUserPage() {
           </form>
         )}
       </div>
-    </AdminLayout>
+    </NewAdminLayout>
   );
 }

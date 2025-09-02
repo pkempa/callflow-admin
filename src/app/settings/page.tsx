@@ -4,7 +4,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import AdminLayout from "@/components/layout/AdminLayout";
+import NewAdminLayout from "@/components/layout/NewAdminLayout";
 import { adminAPI, Parameter, CompanyInfo } from "@/lib/admin-api";
 import {
   Save,
@@ -992,7 +992,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <AdminLayout>
+    <NewAdminLayout>
       <div className="space-y-6">
         {/* Header */}
         <div>
@@ -1393,6 +1393,6 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
-    </AdminLayout>
+    </NewAdminLayout>
   );
 }

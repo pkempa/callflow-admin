@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import AdminLayout from "@/components/layout/AdminLayout";
+import NewAdminLayout from "@/components/layout/NewAdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OrganizationSelect } from "@/components/ui/OrganizationSelect";
@@ -113,7 +113,7 @@ export default function CreatePlatformUserPage() {
   };
 
   return (
-    <AdminLayout>
+    <NewAdminLayout>
       <div className="p-6 max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -519,6 +519,6 @@ export default function CreatePlatformUserPage() {
           </form>
         </div>
       </div>
-    </AdminLayout>
+    </NewAdminLayout>
   );
 }

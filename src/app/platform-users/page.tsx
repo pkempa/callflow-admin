@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import AdminLayout from "@/components/layout/AdminLayout";
+import NewAdminLayout from "@/components/layout/NewAdminLayout";
 import { adminAPI } from "@/lib/admin-api";
 import {
   Dialog,
@@ -293,7 +293,7 @@ export default function PlatformUsersPage() {
   };
 
   return (
-    <AdminLayout>
+    <NewAdminLayout>
       <div className="p-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
@@ -659,6 +659,6 @@ export default function PlatformUsersPage() {
           </Dialog>
         )}
       </div>
-    </AdminLayout>
+    </NewAdminLayout>
   );
 }

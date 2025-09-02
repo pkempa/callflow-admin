@@ -3,7 +3,7 @@
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
-import AdminLayout from "@/components/layout/AdminLayout";
+import NewAdminLayout from "@/components/layout/NewAdminLayout";
 import { adminAPI, SupportTicket, AttachmentMetadata } from "@/lib/admin-api";
 import {
   Search,
@@ -354,7 +354,7 @@ export default function SupportTicketsPage() {
   }
 
   return (
-    <AdminLayout>
+    <NewAdminLayout>
       <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -1196,6 +1196,6 @@ export default function SupportTicketsPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </AdminLayout>
+    </NewAdminLayout>
   );
 }

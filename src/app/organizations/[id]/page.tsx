@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import AdminLayout from "@/components/layout/AdminLayout";
+import NewAdminLayout from "@/components/layout/NewAdminLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -450,17 +450,17 @@ export default function OrganizationDetailPage() {
 
   if (loading) {
     return (
-      <AdminLayout>
+      <NewAdminLayout>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
-      </AdminLayout>
+      </NewAdminLayout>
     );
   }
 
   if (error || (!organization && !loading)) {
     return (
-      <AdminLayout>
+      <NewAdminLayout>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
@@ -482,12 +482,12 @@ export default function OrganizationDetailPage() {
             </div>
           </div>
         </div>
-      </AdminLayout>
+      </NewAdminLayout>
     );
   }
 
   return (
-    <AdminLayout>
+    <NewAdminLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -931,6 +931,6 @@ export default function OrganizationDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </AdminLayout>
+    </NewAdminLayout>
   );
 }

@@ -2,7 +2,7 @@
 
 /**
  * Simple script to create first platform admin user
- * Generates SQL statements to insert into your database
+ * Generates DynamoDB operations to insert into your database
  */
 
 const readline = require('readline');
@@ -26,7 +26,7 @@ function generateId() {
 async function main() {
   console.log('🔐 Create First Platform Admin');
   console.log('=============================');
-  console.log('This script generates SQL to create your first platform admin.\n');
+  console.log('This script generates DynamoDB operations to create your first platform admin.\n');
 
   try {
     // Get required information
@@ -53,81 +53,104 @@ async function main() {
     console.log(`Role: Platform Administrator`);
     console.log(`Organization: Platform Administration (${platformOrgId})`);
 
-    const confirm = await question('\nGenerate SQL for this platform admin? (y/N): ');
+    const confirm = await question('\nGenerate DynamoDB operations for this platform admin? (y/N): ');
     
     if (confirm.toLowerCase() !== 'y') {
       console.log('❌ Cancelled');
       process.exit(0);
     }
 
-    // Generate SQL statements
-    console.log('\n📄 SQL Statements:');
-    console.log('==================');
-    console.log('Copy and execute these SQL statements in your database:\n');
+    // Generate DynamoDB operations
+    console.log('\n📄 DynamoDB Operations:');
+    console.log('========================');
+    console.log('Copy and execute these operations in your DynamoDB console or AWS CLI:\n');
 
-    // Organization SQL (with conflict handling)
-    console.log('-- 1. Create platform admin organization (if not exists)');
-    console.log(`INSERT INTO organizations (
-  id,
-  name,
-  owner_id,
-  plan,
-  team_size,
-  industry,
-  created_at,
-  updated_at
-) VALUES (
-  '${platformOrgId}',
-  'Platform Administration',
-  '${clerkUserId}',
-  'ENTERPRISE',
-  '1-10',
-  'Technology',
-  '${timestamp}',
-  '${timestamp}'
-) ON CONFLICT (id) DO NOTHING;`);
+    // Organization DynamoDB operation
+    console.log('-- 1. Create platform admin organization');
+    console.log('AWS CLI Command:');
+    console.log(`aws dynamodb put-item \\
+  --table-name callflow-organizations \\
+  --item '{
+    "id": {"S": "${platformOrgId}"},
+    "name": {"S": "Platform Administration"},
+    "owner_id": {"S": "${clerkUserId}"},
+    "plan": {"S": "enterprise"},
+    "team_size": {"S": "1-10"},
+    "industry": {"S": "Technology"},
+    "created_at": {"S": "${timestamp}"},
+    "updated_at": {"S": "${timestamp}"}
+  }'`);
 
     console.log('\n-- 2. Create platform admin user');
-    console.log(`INSERT INTO users (
-  id,
-  email,
-  first_name,
-  last_name,
-  organization_id,
-  role,
-  status,
-  clerk_user_id,
-  phone_number,
-  job_title,
-  department,
-  created_at,
-  updated_at
-) VALUES (
-  '${userId}',
-  '${email}',
-  '${firstName}',
-  '${lastName}',
-  '${platformOrgId}',
-  'ADMIN',
-  'ACTIVE',
-  '${clerkUserId}',
-  ${phoneNumber ? `'${phoneNumber}'` : 'NULL'},
-  '${jobTitle}',
-  '${department}',
-  '${timestamp}',
-  '${timestamp}'
-);`);
+    console.log('AWS CLI Command:');
+    
+    const userItem = {
+      "id": {"S": userId},
+      "email": {"S": email},
+      "first_name": {"S": firstName},
+      "last_name": {"S": lastName},
+      "organization_id": {"S": platformOrgId},
+      "role": {"S": "admin"},
+      "status": {"S": "active"},
+      "clerk_user_id": {"S": clerkUserId},
+      "job_title": {"S": jobTitle},
+      "department": {"S": department},
+      "created_at": {"S": timestamp},
+      "updated_at": {"S": timestamp}
+    };
 
-    console.log('\n✅ SQL Generated Successfully!');
+    // Add phone number if provided
+    if (phoneNumber && phoneNumber.trim()) {
+      userItem.phone_number = {"S": phoneNumber.trim()};
+    }
+
+    console.log(`aws dynamodb put-item \\
+  --table-name callflow-users \\
+  --item '${JSON.stringify(userItem, null, 2).replace(/\n/g, '\\n')}'`);
+
+    console.log('\n-- 3. Create email index entry (for email uniqueness)');
+    console.log('AWS CLI Command:');
+    console.log(`aws dynamodb put-item \\
+  --table-name callflow-users \\
+  --item '{
+    "id": {"S": "email:${email}"},
+    "email": {"S": "${email}"},
+    "user_id": {"S": "${userId}"},
+    "organization_id": {"S": "${platformOrgId}"},
+    "created_at": {"S": "${timestamp}"}
+  }'`);
+
+    console.log('\n✅ DynamoDB Operations Generated Successfully!');
     console.log('\n📌 Next Steps:');
-    console.log('1. Execute the SQL statements above in your database');
-    console.log('2. Login to the admin panel with your Clerk credentials');
-    console.log('3. Create additional platform users via the admin UI');
+    console.log('1. Execute the DynamoDB operations above using AWS CLI or DynamoDB console');
+    console.log('2. Create the Clerk organization with ID "platform-admin-org"');
+    console.log('3. Add your user to the Clerk organization with admin role');
+    console.log('4. Login to the admin panel with your Clerk credentials');
+    console.log('5. Create additional platform users via the admin UI');
     console.log('\n💡 Platform Admin Powers:');
     console.log('- Create/manage all users (platform and organization)');
     console.log('- Manage SSM Parameter Store');
     console.log('- View system-wide analytics');
     console.log('- Access all admin features');
+    console.log('\n🔧 Alternative: Use AWS SDK');
+    console.log('If you prefer to use the AWS SDK, here are the JavaScript operations:');
+    console.log('\nconst { DynamoDBClient } = require("@aws-sdk/client-dynamodb");');
+    console.log('const { PutItemCommand } = require("@aws-sdk/lib-dynamodb");');
+    console.log('const client = new DynamoDBClient({ region: "your-region" });');
+    console.log('\n// Organization operation');
+    console.log('await client.send(new PutItemCommand({');
+    console.log('  TableName: "callflow-organizations",');
+    console.log('  Item: {');
+    console.log(`    id: "${platformOrgId}",`);
+    console.log('    name: "Platform Administration",');
+    console.log(`    owner_id: "${clerkUserId}",`);
+    console.log('    plan: "enterprise",');
+    console.log('    team_size: "1-10",');
+    console.log('    industry: "Technology",');
+    console.log(`    created_at: "${timestamp}",`);
+    console.log(`    updated_at: "${timestamp}"`);
+    console.log('  }');
+    console.log('}));');
 
   } catch (error) {
     console.error('❌ Error:', error.message);

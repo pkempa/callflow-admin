@@ -23,8 +23,7 @@ export async function GET(request: NextRequest) {
     const queryString = searchParams.toString();
 
     // Backend API URL
-    const apiUrl =
-      process.env.NEXT_PUBLIC_API_URL || "https://api.callflowai.com";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://api.pkempa.com";
 
     // Forward request to backend
     const backendUrl = `${apiUrl}/admin/logs${
@@ -93,8 +92,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Backend API URL
-    const apiUrl =
-      process.env.NEXT_PUBLIC_API_URL || "https://api.callflowai.com";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://api.pkempa.com";
 
     // Forward request to backend
     const backendUrl = `${apiUrl}/admin/logs`;
